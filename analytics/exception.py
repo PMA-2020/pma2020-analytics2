@@ -1,0 +1,2 @@
+class CondenseException(Exception):
+    pass

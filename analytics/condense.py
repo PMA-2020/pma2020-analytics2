@@ -1,29 +1,26 @@
 import argparse
-import json
+import csv
 import logging
-import os
 import os.path
+import time
 
-from .lookup import lookup
-from .config import config
+from analytics.formdata import lookup
+from analytics.exception import CondenseException
+from analytics.instance import Instance
 
 
-def setup_logging(config_dict, user_dict, log_level, default_out):
-    config_dict.update(user_dict)
-    level = getattr(logging, log_level if log_level is not None else "",
-        getattr(logging, config_dict['LOG_LEVEL'], None)
-    )
+def setup_logging(log_level, export_directory, log_file):
+    level = getattr(logging, log_level if log_level is not None else "", None)
     if not isinstance(level, int):
         level = logging.DEBUG
-
-    fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    fmt = '%(asctime)s - %(levelname)s - %(message)s'
     datefmt = '%m/%d/%Y %I:%M:%S %p'
-    if config_dict['LOG_STDERR']:
-        logging.basicConfig(level=level, format=fmt, datefmt=datefmt)
-    else:
-        log_file = config_dict.get('LOG_FILE', default_out)
-        logging.basicConfig(filename=log_file, level=level, format=fmt,
+    if log_file:
+        log_out = os.path.join(export_directory, log_file)
+        logging.basicConfig(filename=log_out, level=level, format=fmt,
                             datefmt=datefmt)
+    else:
+        logging.basicConfig(level=level, format=fmt, datefmt=datefmt)
 
 
 if __name__ == '__main__':
@@ -48,35 +45,141 @@ if __name__ == '__main__':
     out_help = 'The file to write. Should have ".csv" extension'
     named.add_argument('--export_filename', help=out_help, required=True)
 
-    config_help = ('Path to configuration file, a JSON dictionary. Overwrites '
-                   'defaults')
-    parser.add_argument('--config', help=config_help)
+    overwrite_help = ('Set this flag to overwrite output CSV file, otherwise '
+                      'append.')
+    parser.add_argument('--overwrite', help=overwrite_help, action='store_true')
 
-    log_help = ('Log level. One of DEBUG, INFO, WARNING, ERROR.')
-    parser.add_argument('--log', help=log_help)
+    log_help = ('Log level. One of DEBUG, INFO, WARNING, ERROR. If not set or '
+                'incorrect, default is DEBUG.')
+    parser.add_argument('--log_level', help=log_help)
+
+    log_file_help = ('Log file name. Goes in "export_directory". If omitted, '
+                     'then log output directs to STDERR.')
+    parser.add_argument('--log_file', help=log_file_help)
+
+    lookup_help = ('Path to form lookup file, a JSON dictionary. Overwrites '
+                   'defaults. Should have format {"form_id": "MY_FORM_ID", '
+                   '"form_title": "MY_FORM_TITLE", "prompts":["PROMPT1", '
+                   '"PROMPT2", ..., "PROMPTN"]} at a minimum')
+    parser.add_argument('--lookup', help=lookup_help)
+
+    config_help = 'Path to a config file, a JSON dictionary'
+    parser.add_argument('--config', help=config_help)
 
     args = parser.parse_args()
 
     try:
-        with open(args.config) as json_file:
-            user_config = json.load(json_file)
-    except Exception as e:
-        user_config = {}
 
-    try:
-        form_title = lookup[args.form_id]
-        instances_dir = os.path.join(args.storage_directory,
-                                     "ODK Briefcase Storage", "forms",
-                                     form_title, "instances")
-        count = sum(1 for i in os.scandir(instances_dir) if i.is_dir())
-        print(f'*Analyzing {count} instances downloaded into {instances_dir}')
+        form_obj = lookup.lookup(args.form_id)
+        if args.lookup:
+            user_obj = lookup.lookup(args.form_id, src=args.lookup)
+            if user_obj:
+                form_obj.update(user_obj)
+        if not form_obj:
+            raise CondenseException(f'Unable to find form information for '
+                                    f'{args.form_id}. Verify supplied form id '
+                                    f'and lookup data.')
 
+        inst_dir = os.path.join(args.storage_directory,
+                                'ODK Briefcase Storage', 'forms',
+                                form_obj['form_title'], 'instances')
         csv_output = os.path.join(args.export_directory, args.export_filename)
-        print(f'*Intended output file: {csv_output}')
+        old = set()
+        if not args.overwrite:
+            try:
+                with open(csv_output) as f:
+                    r = csv.reader(f)
+                    old = set(line[0] for i, line in enumerate(r) if i != 0)
+            except FileNotFoundError:
+                # csv output does not exist
+                pass
+        # Build up folders to walk
+        folders = []
+        for i in os.scandir(inst_dir):
+            if i.is_dir() and i.name not in old:
+                folders.append(i.path)
+        count = len(folders)
+        if args.overwrite:
+            print(f'Analyzing new {count} instances downloaded into {inst_dir}')
+            print(f'Intended output file with overwrite: {csv_output}')
+        else:
+            print(f'Analyzing all {count} instances downloaded into {inst_dir}')
+            print(f'Intended output file with append: {csv_output}')
+        setup_logging(args.log_level, args.export_directory, args.log_file)
+        logging.info('Logging record for form_id "%s"', args.form_id)
+        start_time = int(time.time())
+        # DO STUFF
+        if folders:
+            uncaptured_prompts = set()
+            mode = 'w' if args.overwrite else 'a'
+            with open(csv_output, mode=mode, newline='') as f:
+                writer = csv.writer(f)
+                header = [
+                    'dir_uuid',
+                    'log_version',
+                    'log_size_kb',
+                    'xml_size_kb',
+                    'photo_size_kb',
+                    'resumed',
+                    'paused',
+                    'short_break',
+                    'save_count',
+                    'screen_count'
+                ]
+                for prompt in form_obj['prompts']:
+                    chunk = [f'{prompt}_CC', f'{prompt}_time', f'{prompt}_visits']
+                    header.extend(chunk)
+                writer.writerow(header)
+                for folder in folders:
+                    i = Instance(folder, prompts=form_obj['prompts'])
+                    row = [
+                        i.folder,
+                        i.log_version,
+                        int(i.xml_size / 1000),
+                        int(i.txt_size / 1000),
+                        int(i.jpg_size / 1000),
+                        int(i.resumed / 1000),
+                        int(i.paused / 1000),
+                        int(i.short_break / 1000),
+                        i.save_count,
+                        i.enter_count
+                    ]
+                    for prompt in form_obj['prompts']:
+                        chunk = []
+                        try:
+                            cc = i.prompt_cc[prompt]
+                            chunk.append(cc)
+                        except KeyError:
+                            chunk.append(None)
+                        try:
+                            timing = int(i.prompt_data[prompt]/1000)
+                            chunk.append(timing)
+                        except KeyError:
+                            chunk.append(None)
+                        try:
+                            visits = i.prompt_visits[prompt]
+                            chunk.append(visits)
+                        except KeyError:
+                            chunk.append(None)
+                        row.extend(chunk)
 
-        log_output = os.path.join(args.export_directory, 'analytics.log')
-        setup_logging(config, user_config, args.log, log_output)
+                    writer.writerow(row)
+                    uncaptured_prompts |= i.uncaptured_prompts
+            if uncaptured_prompts:
+                logging.info('From instances in %s, discovered %d uncaptured prompts: %s', inst_dir, len(uncaptured_prompts), str(uncaptured_prompts))
+        end_time = int(time.time())
+        diff = end_time - start_time
+        if diff > 300:
+            diff_str = "{0:.2f} minutes".format(diff/60)
+        else:
+            diff_str = "{} seconds".format(diff)
+        m = (f'Finished condensing data to "{csv_output}" for form_id '
+             f'"{args.form_id}" after {diff_str}')
+        logging.info(m)
+        print(m)
     except FileNotFoundError:
-        print(f'No such storage directory: {instances_dir}')
+        print(f'No such storage directory: {inst_dir}')
     except KeyError as e:
         print('Unknown form id {}. Check lookup.py'.format(str(e)))
+    except CondenseException as e:
+        print(e)

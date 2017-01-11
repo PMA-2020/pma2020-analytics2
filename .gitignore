@@ -1,3 +1,4 @@
 .idea
 env
 analytics/__pycache__
+*__pycache__*
