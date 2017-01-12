@@ -13,6 +13,14 @@ PMA Analytics makes use of Python 3.6. Install [Python 3.6][1].
 
 [1]: https://www.python.org/downloads/
 
+## Installation
+
+Install via pip with
+
+```
+python -m pip install https://github.com/jkpr/pma2020-analytics2/zipball/master
+```
+
 
 ## Examples
 
