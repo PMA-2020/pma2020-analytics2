@@ -11,8 +11,12 @@ setup(
     author_email='jpringle@jhu.edu',
     url='http://www.pma2020.org',
     packages=[
-        'analytics'
+        'analytics',
+        'analytics.formdata'
     ],
+    package_data={
+        'analytics.formdata': ['*.json']
+    },
     license='LICENSE.txt',
     description='Utility to produce intermediate dataset from all logs',
     long_description=open('README.md').read()

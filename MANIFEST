@@ -6,3 +6,8 @@ analytics/event.py
 analytics/exception.py
 analytics/instance.py
 analytics/logparser.py
+analytics/formdata/__init__.py
+analytics/formdata/ghr5.json
+analytics/formdata/lookup.py
+analytics/formdata/rjr1-test.json
+analytics/formdata/rjr1.json
