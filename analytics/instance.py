@@ -10,6 +10,7 @@ class Instance:
 
     LOG = 'log.txt'
     XML = 'submission.xml'
+    TWO_HR = 7_200_000
     THIRTY_MIN = 1_800_000
     TEN_SEC = 10_000
     ONE_SWIPE = 400
@@ -101,6 +102,8 @@ class Instance:
                     logging.warning('In %s, oP found before oR: %s', self.folder, str(token))
                 elif resumed_token is not None and paused_token is None:
                     resumed_diff = token - resumed_token
+                    if resumed_diff > self.TWO_HR:
+                        logging.warning('[%s] Resumed time greater than 2hr between %s and %s', self.folder, resumed_token, token)
                     self.update_resumed(resumed_diff)
                     paused_token = token
                     resumed_token = None

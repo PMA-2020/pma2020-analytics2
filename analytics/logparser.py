@@ -75,6 +75,8 @@ class Logparser:
                                 events.append(next_event)
                             elif event_code == 'oP':
                                 last_oR = None
+                            elif not last_oR and event_code == 'oR':
+                                last_oR = t
                             events.append(t)
                             # Reset values for the next event
                             event_queue.clear()
