@@ -18,6 +18,9 @@ class Logparser:
         self.relation_threshold = relation_threshold
         self.folder = os.path.split(os.path.split(f)[0])[1]
         self.version = None
+
+        logging.debug("[%s] Beginning work", self.folder)
+
         self.events = self.capture_events()
 
     def capture_events(self):
@@ -85,7 +88,7 @@ class Logparser:
                             event_increasing = True
                             event_min = 9_999_999_999_999
                             event_max = 0
-                            if t.stage == Event.QUESTION:
+                            if t.stage == Event.QUESTION or event_code == 'oR':
                                 prev = t
 
                         event_min = min(event_min, this_time)
