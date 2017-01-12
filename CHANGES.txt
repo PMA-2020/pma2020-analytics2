@@ -1,0 +1,3 @@
+v0.1.0, 12 Jan 2017 -- Initial release.
+ * Screen timing from "log.txt"
+ * Support for RJR1
