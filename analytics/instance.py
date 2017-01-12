@@ -57,13 +57,13 @@ class Instance:
             self.relation_threshold = self.TEN_SEC
 
         if len(self.xml) != 1:
-            logging.warning('[%s] Number of xml files found: %d', self.folder,
+            logging.info('[%s] Number of xml files found: %d', self.folder,
                             len(self.xml))
         else:
             self.summarize_xml(tags=tags)
 
         if len(self.txt) != 1:
-            logging.warning('[%s] Number of txt files found: %d', self.folder,
+            logging.info('[%s] Number of txt files found: %d', self.folder,
                             len(self.txt))
         else:
             self.summarize_log(prompts=prompts, milestones=milestones)
@@ -156,15 +156,12 @@ class Instance:
 
     def screen_time(self, enter_token, leave_token):
         if enter_token and leave_token and leave_token.stage == Event.QUESTION:
-            flag_diff = False
             time_diff = leave_token - enter_token
-            for e, l in zip(enter_token.prompts(), leave_token.prompts()):
-                if e == l:
-                    self.update_screen_time(e, time_diff)
-                else:
-                    flag_diff = True
-            if flag_diff:
+            e, l = set(enter_token.prompts()), set(leave_token.prompts())
+            if not e & l:
                 logging.warning('[%s] Unmatched enter/exit tokens: %s, %s', self.folder, str(enter_token), str(leave_token))
+            for p in e & l:
+                self.update_screen_time(p, time_diff)
 
     def update_screen_time(self, prompt, time_diff):
         if prompt in self.prompts:

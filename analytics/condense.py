@@ -100,10 +100,10 @@ if __name__ == '__main__':
                 folders.append(i.path)
         count = len(folders)
         if args.overwrite:
-            print(f'Analyzing new {count} instances downloaded into {inst_dir}')
+            print(f'Analyzing all {count} instances downloaded into {inst_dir}')
             print(f'Intended output file with overwrite: {csv_output}')
         else:
-            print(f'Analyzing all {count} instances downloaded into {inst_dir}')
+            print(f'Analyzing new {count} instances downloaded into {inst_dir}')
             print(f'Intended output file with append: {csv_output}')
         setup_logging(args.log_level, args.export_directory, args.log_file)
         logging.info('Logging record for form_id "%s"', args.form_id)
