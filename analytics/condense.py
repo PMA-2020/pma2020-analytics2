@@ -59,8 +59,9 @@ if __name__ == '__main__':
 
     lookup_help = ('Path to form lookup file, a JSON dictionary. Overwrites '
                    'defaults. Should have format {"form_id": "MY_FORM_ID", '
-                   '"form_title": "MY_FORM_TITLE", "prompts":["PROMPT1", '
-                   '"PROMPT2", ..., "PROMPTN"]} at a minimum')
+                   '"form_title": "MY_FORM_TITLE", "prompts": ["PROMPT1", '
+                   '"PROMPT2", ..., "PROMPTN"], "tags": ["TAG1", "TAG2", ..., '
+                   '"TAGN"]} at a minimum')
     parser.add_argument('--lookup', help=lookup_help)
 
     config_help = 'Path to a config file, a JSON dictionary'
