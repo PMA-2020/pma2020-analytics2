@@ -74,8 +74,10 @@ if __name__ == '__main__':
         form_obj = lookup.lookup(args.form_id)
         if args.lookup:
             user_obj = lookup.lookup(args.form_id, src=args.lookup)
-            if user_obj:
+            if user_obj and form_obj:
                 form_obj.update(user_obj)
+            elif user_obj and not form_obj:
+                form_obj = user_obj
         if not form_obj:
             raise CondenseException(f'Unable to find form information for '
                                     f'{args.form_id}. Verify supplied form id '
