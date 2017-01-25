@@ -24,6 +24,8 @@ python3 -m pip install https://github.com/jkpr/pma2020-analytics2/zipball/master
 
 ## Examples
 
+All required arguments are named to follow the same pattern as ODK Briefcase.
+
 Example usage:
 
 ```
