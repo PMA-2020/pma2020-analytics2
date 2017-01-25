@@ -19,8 +19,6 @@ class Logparser:
         self.folder = os.path.split(os.path.split(f)[0])[1]
         self.version = None
 
-        logging.debug("[%s] Beginning work", self.folder)
-
         self.events = self.capture_events()
 
     def capture_events(self):

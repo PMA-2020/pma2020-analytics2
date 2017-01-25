@@ -15,10 +15,15 @@ class Instance:
     THIRTY_MIN = 1_800_000
     TEN_SEC = 10_000
     ONE_SWIPE = 400
+    INSTANCE = 0
 
     def __init__(self, name, prompts=None, milestones=None, tags=None, config=None):
         self.full_name = name
         self.folder = os.path.split(self.full_name)[1]
+
+        Instance.INSTANCE += 1
+        logging.debug("[%s] Beginning work (%d)", self.folder, self.INSTANCE)
+
 
         self.xml = self.find_files(self.XML)
         self.txt = self.find_files(self.LOG)
