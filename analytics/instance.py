@@ -1,6 +1,7 @@
 import glob
 import logging
 import os.path
+import re
 
 from analytics.logparser import Logparser
 from analytics.event import Event
@@ -61,15 +62,15 @@ class Instance:
             logging.info('[%s] Number of xml files found: %d', self.folder,
                             len(self.xml))
         else:
-            self.summarize_xml(tags=tags)
+            self.summarize_xml()
 
         if len(self.txt) != 1:
             logging.info('[%s] Number of txt files found: %d', self.folder,
                             len(self.txt))
         else:
-            self.summarize_log(prompts=prompts, milestones=milestones)
+            self.summarize_log()
 
-    def summarize_log(self, prompts=None, milestones=None):
+    def summarize_log(self):
         full_file = os.path.join(self.full_name, self.LOG)
         parser = Logparser(full_file, event_threshold=self.event_threshold,
                            relation_threshold=self.relation_threshold)
@@ -183,8 +184,19 @@ class Instance:
         if 0 < paused_diff < self.short_break_threshold:
             self.short_break += paused_diff
 
-    def summarize_xml(self, tags=None):
+    def summarize_xml(self):
+        if not self.tags:
+            return
+
         full_file = os.path.join(self.full_name, self.XML)
+        with open(full_file) as open_file:
+            s = open_file.read()
+            for tag in self.tags:
+                pattern = f'<{tag}>([^<>]+)</{tag}>'
+                match = re.search(pattern, s)
+                if match:
+                    value = match.group(1)
+                    self.tag_data[tag] = value
 
     def find_files(self, *pattern):
         all_found = []

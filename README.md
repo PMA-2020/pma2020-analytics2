@@ -18,7 +18,7 @@ PMA Analytics makes use of Python 3.6. Install [Python 3.6][1].
 Install via pip with
 
 ```
-python -m pip install https://github.com/jkpr/pma2020-analytics2/zipball/master
+python3 -m pip install https://github.com/jkpr/pma2020-analytics2/zipball/master
 ```
 
 
@@ -27,13 +27,13 @@ python -m pip install https://github.com/jkpr/pma2020-analytics2/zipball/master
 Example usage:
 
 ```
-python -m analytics.condense --storage_directory ~/Documents/odkbriefcase/ --form_id HQ-rjr1-v25 --export_directory . --export_filename out.csv
+python3 -m analytics.condense --storage_directory ~/Documents/odkbriefcase/ --form_id HQ-rjr1-v25 --export_directory . --export_filename out.csv
 ```
 
 ## Updates
 
 ```
-python -m pip install https://github.com/jkpr/pma2020-analytics2/zipball/master --upgrade
+python3 -m pip install https://github.com/jkpr/pma2020-analytics2/zipball/master --upgrade
 ```
 
 

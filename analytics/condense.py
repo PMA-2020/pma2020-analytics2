@@ -108,12 +108,16 @@ if __name__ == '__main__':
         setup_logging(args.log_level, args.export_directory, args.log_file)
         logging.info('Logging record for form_id "%s"', args.form_id)
         start_time = int(time.time())
+
         # DO STUFF
         if folders:
+            tags = form_obj['tags'] if 'tags' in form_obj else []
+            prompts = form_obj['prompts'] if 'prompts' in form_obj else []
             uncaptured_prompts = set()
             mode = 'w' if args.overwrite else 'a'
             with open(csv_output, mode=mode, newline='') as f:
                 writer = csv.writer(f)
+                # Common to all instances, and some logging info
                 header = [
                     'dir_uuid',
                     'log_version',
@@ -126,12 +130,17 @@ if __name__ == '__main__':
                     'save_count',
                     'screen_count'
                 ]
-                for prompt in form_obj['prompts']:
+                # Get all dynamic tags
+                tag_header = tags
+                header.extend(tag_header)
+                # Get all dynamic prompts
+                for prompt in prompts:
                     chunk = [f'{prompt}_CC', f'{prompt}_time', f'{prompt}_visits']
                     header.extend(chunk)
                 writer.writerow(header)
                 for folder in folders:
-                    i = Instance(folder, prompts=form_obj['prompts'])
+                    i = Instance(folder, prompts=prompts, tags=tags)
+                    # Common to all instances, and some logging info
                     row = [
                         i.folder,
                         i.log_version,
@@ -144,7 +153,19 @@ if __name__ == '__main__':
                         i.save_count,
                         i.enter_count
                     ]
-                    for prompt in form_obj['prompts']:
+                    # Get all dynamic tags
+                    tag_chunk = []
+                    for tag in tags:
+                        try:
+                            found_tag = i.tag_data[tag]
+                            # TODO: Possibly escape the data for csv
+                            # csv module may do that automatically, though
+                            tag_chunk.append(found_tag)
+                        except KeyError:
+                            tag_chunk.append(None)
+                    row.extend(tag_chunk)
+                    # Get all dynamic prompts
+                    for prompt in prompts:
                         chunk = []
                         try:
                             cc = i.prompt_cc[prompt]
