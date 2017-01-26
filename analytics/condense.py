@@ -59,8 +59,9 @@ if __name__ == '__main__':
 
     lookup_help = ('Path to form lookup file, a JSON dictionary. Overwrites '
                    'defaults. Should have format {"form_id": "MY_FORM_ID", '
-                   '"form_title": "MY_FORM_TITLE", "prompts":["PROMPT1", '
-                   '"PROMPT2", ..., "PROMPTN"]} at a minimum')
+                   '"form_title": "MY_FORM_TITLE", "prompts": ["PROMPT1", '
+                   '"PROMPT2", ..., "PROMPTN"], "tags": ["TAG1", "TAG2", ..., '
+                   '"TAGN"]} at a minimum')
     parser.add_argument('--lookup', help=lookup_help)
 
     config_help = 'Path to a config file, a JSON dictionary'
@@ -73,8 +74,10 @@ if __name__ == '__main__':
         form_obj = lookup.lookup(args.form_id)
         if args.lookup:
             user_obj = lookup.lookup(args.form_id, src=args.lookup)
-            if user_obj:
+            if user_obj and form_obj:
                 form_obj.update(user_obj)
+            elif user_obj and not form_obj:
+                form_obj = user_obj
         if not form_obj:
             raise CondenseException(f'Unable to find form information for '
                                     f'{args.form_id}. Verify supplied form id '
@@ -128,7 +131,8 @@ if __name__ == '__main__':
                     'paused',
                     'short_break',
                     'save_count',
-                    'screen_count'
+                    'screen_count',
+                    'rS'
                 ]
                 # Get all dynamic tags
                 tag_header = tags
@@ -151,7 +155,8 @@ if __name__ == '__main__':
                         int(i.paused / 1000),
                         int(i.short_break / 1000),
                         i.save_count,
-                        i.enter_count
+                        i.enter_count,
+                        i.relation_self_destruct
                     ]
                     # Get all dynamic tags
                     tag_chunk = []
