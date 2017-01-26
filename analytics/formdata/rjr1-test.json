@@ -30,7 +30,7 @@
 
     ],
     "tags": [
-
+      "your_name", "name_typed", "deviceid", "start", "end", "SDP_result"
     ],
     "__comment": "end object for SQ"
   }
