@@ -51,6 +51,7 @@ class Instance:
 
         self.save_count = 0
         self.enter_count = 0
+        self.relation_self_destruct = 0
 
         self.log_version = None
 
@@ -128,6 +129,10 @@ class Instance:
                 if token.stage == Event.QUESTION:
                     self.screen_visit(token)
                     self.enter_count += 1
+
+            # Track rS, happens in HQ when related FQ age is moved out of 15-49
+            if token.code == 'rS':
+                self.relation_self_destruct += 1
 
             # Track certain events
             if token.code == 'CC':

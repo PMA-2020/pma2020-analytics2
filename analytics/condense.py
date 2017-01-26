@@ -131,7 +131,8 @@ if __name__ == '__main__':
                     'paused',
                     'short_break',
                     'save_count',
-                    'screen_count'
+                    'screen_count',
+                    'rS'
                 ]
                 # Get all dynamic tags
                 tag_header = tags
@@ -154,7 +155,8 @@ if __name__ == '__main__':
                         int(i.paused / 1000),
                         int(i.short_break / 1000),
                         i.save_count,
-                        i.enter_count
+                        i.enter_count,
+                        i.relation_self_destruct
                     ]
                     # Get all dynamic tags
                     tag_chunk = []
