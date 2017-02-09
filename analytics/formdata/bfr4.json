@@ -734,7 +734,7 @@
       "SDP_result"
     ],
     "tags": [
-      "your_name", "name_typed", "deviceid", "start", "end", "SDP_result"
+      "your_name", "name_typed", "deviceid", "start", "end", "SDP_result", "facility_type"
     ],
     "__comment": "end object for SQ-rjr1-v12"
   }
