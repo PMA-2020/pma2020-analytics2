@@ -40,6 +40,8 @@ class Instance:
         self.prompt_data = {}
         self.prompt_cc = {}
         self.prompt_visits = {}
+        self.prompt_changes = {}
+        self.prompt_value = {}
         self.uncaptured_prompts = set()
 
         self.milestone_data = {}
@@ -141,8 +143,30 @@ class Instance:
             elif token.code == 'SF':
                 self.save_count += 1
 
+            # Track value of each entry
+            self.update_prompt_value(token)
+
             # End of loop
             last_token = token
+
+    def update_prompt_value(self, token):
+        for entry, prompt in zip(token, token.prompts()):
+            xpath = entry[2]
+            value = entry[3]
+            if xpath not in self.prompt_value:
+                self.prompt_value[xpath] = value
+                if value != '':
+                    try:
+                        self.prompt_changes[prompt] += 1
+                    except KeyError:
+                        self.prompt_changes[prompt] = 1
+            elif self.prompt_value[xpath] != value:
+                self.prompt_value[xpath] = value
+                try:
+                    self.prompt_changes[prompt] += 1
+                except KeyError:
+                    self.prompt_changes[prompt] = 1
+
 
     def screen_cc(self, cc_token):
         for p in cc_token.prompts():

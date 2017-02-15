@@ -121,27 +121,33 @@ if __name__ == '__main__':
             with open(csv_output, mode=mode, newline='') as f:
                 writer = csv.writer(f)
                 # Common to all instances, and some logging info
-                header = [
-                    'dir_uuid',
-                    'log_version',
-                    'log_size_kb',
-                    'xml_size_kb',
-                    'photo_size_kb',
-                    'resumed',
-                    'paused',
-                    'short_break',
-                    'save_count',
-                    'screen_count',
-                    'rS'
-                ]
-                # Get all dynamic tags
-                tag_header = tags
-                header.extend(tag_header)
-                # Get all dynamic prompts
-                for prompt in prompts:
-                    chunk = [f'{prompt}_CC', f'{prompt}_time', f'{prompt}_visits']
-                    header.extend(chunk)
-                writer.writerow(header)
+                if f.tell() == 0:
+                    header = [
+                        'dir_uuid',
+                        'log_version',
+                        'log_size_kb',
+                        'xml_size_kb',
+                        'photo_size_kb',
+                        'resumed',
+                        'paused',
+                        'short_break',
+                        'save_count',
+                        'screen_count',
+                        'rS'
+                    ]
+                    # Get all dynamic tags
+                    tag_header = tags
+                    header.extend(tag_header)
+                    # Get all dynamic prompts
+                    for prompt in prompts:
+                        chunk = [
+                            f'{prompt}_CC',
+                            f'{prompt}_time',
+                            f'{prompt}_visits',
+                            f'{prompt}_delta'
+                        ]
+                        header.extend(chunk)
+                    writer.writerow(header)
                 for folder in folders:
                     i = Instance(folder, prompts=prompts, tags=tags)
                     # Common to all instances, and some logging info
@@ -185,6 +191,11 @@ if __name__ == '__main__':
                         try:
                             visits = i.prompt_visits[prompt]
                             chunk.append(visits)
+                        except KeyError:
+                            chunk.append(None)
+                        try:
+                            delta = i.prompt_changes[prompt]
+                            chunk.append(delta)
                         except KeyError:
                             chunk.append(None)
                         row.extend(chunk)

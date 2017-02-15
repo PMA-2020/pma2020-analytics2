@@ -189,7 +189,7 @@
       "HHQ_result"
     ],
     "tags": [
-      "your_name", "name_typed", "deviceid", "start", "end", "HHQ_result"
+      "your_name", "name_typed", "level1", "level2", "level3", "EA", "deviceid", "start", "end", "HHQ_result"
     ],
     "__comment": "end object for HQ"
   },
@@ -446,7 +446,7 @@
       "FRS_result"
     ],
     "tags": [
-      "your_name", "name_typed", "deviceid", "start", "end", "FRS_result"
+      "your_name", "name_typed", "level1", "level2", "level3", "EA", "level1_unlinked", "level2_unlinked", "level3_unlinked", "EA_unlinked", "deviceid", "start", "end", "FRS_result"
     ],
     "__comment": "end object for FQ"
   },
@@ -734,7 +734,7 @@
       "SDP_result"
     ],
     "tags": [
-      "your_name", "name_typed", "deviceid", "start", "end", "SDP_result", "facility_type"
+      "your_name", "name_typed", "level1", "level2", "level3", "EA", "deviceid", "start", "end", "SDP_result", "facility_type"
     ],
     "__comment": "end object for SQ"
   }
