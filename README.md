@@ -41,6 +41,10 @@ objects with properties
 * `prompts` (list of string) prompts in the `log.txt` files
 * `tags` (list of string) names of XML tags from `submission.xml` files 
 
+Put something in `prompts` in order to get information about number of visits 
+and time spent at that prompt. Put something in `tags` to get the actual value 
+in the submission, e.g. `<your_name>Jane Doe</your_name>`
+
 An example is given below.
 
 ```
