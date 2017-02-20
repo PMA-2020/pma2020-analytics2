@@ -1,7 +1,11 @@
+v0.2.1 20 Feb 2017
+ * RJR2 fix typos
+
 v0.2.0 15 Feb 2017
  * Track changes to prompt value
  * Put geographic identifiers for all rounds.
  * Write header only if starting the output CSV
+ * RJR2
 
 v0.1.1 26 Jan 2017
  * Track "rS" event
