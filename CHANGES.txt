@@ -1,3 +1,7 @@
+v0.2.2 21 Feb 2017
+ * Track "EA[1]" style prompts (v4 of logging)
+ * Filled in CC stub
+
 v0.2.1 20 Feb 2017
  * RJR2 fix typos
 
