@@ -41,9 +41,9 @@ class Event:
     def prompts(self):
         for row in self.rows:
             full_prompt = row[2]
-            found = re.search(r'/([^/]+)\[1\]$', full_prompt)
+            found = re.search(r'(^|/)([^/]+)\[1\]$', full_prompt)
             if found:
-                yield found.group(1)
+                yield found.group(2)
             else:
                 yield full_prompt
 
