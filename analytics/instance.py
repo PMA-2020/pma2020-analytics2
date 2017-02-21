@@ -132,16 +132,17 @@ class Instance:
                     self.screen_visit(token)
                     self.enter_count += 1
 
-            # Track rS, happens in HQ when related FQ age is moved out of 15-49
-            if token.code == 'rS':
-                self.relation_self_destruct += 1
-
             # Track certain events
+            # Contravene a constraint
             if token.code == 'CC':
                 if token.stage == Event.QUESTION:
-                    pass
+                    self.screen_cc(token)
+            # Save form count
             elif token.code == 'SF':
                 self.save_count += 1
+            # Track rS, happens in HQ when related FQ age is moved out of 15-49
+            elif token.code == 'rS':
+                self.relation_self_destruct += 1
 
             # Track value of each entry
             self.update_prompt_value(token)
@@ -166,7 +167,6 @@ class Instance:
                     self.prompt_changes[prompt] += 1
                 except KeyError:
                     self.prompt_changes[prompt] = 1
-
 
     def screen_cc(self, cc_token):
         for p in cc_token.prompts():
