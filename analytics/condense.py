@@ -90,7 +90,7 @@ if __name__ == '__main__':
         old = set()
         if not args.overwrite:
             try:
-                with open(csv_output) as f:
+                with open(csv_output, encoding='utf-8') as f:
                     r = csv.reader(f)
                     old = set(line[0] for i, line in enumerate(r) if i != 0)
             except FileNotFoundError:
@@ -118,7 +118,7 @@ if __name__ == '__main__':
             prompts = form_obj['prompts'] if 'prompts' in form_obj else []
             uncaptured_prompts = set()
             mode = 'w' if args.overwrite else 'a'
-            with open(csv_output, mode=mode, newline='') as f:
+            with open(csv_output, mode=mode, newline='', encoding='utf-8') as f:
                 writer = csv.writer(f)
                 # Common to all instances, and some logging info
                 if f.tell() == 0:

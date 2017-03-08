@@ -26,7 +26,7 @@ def obj_by_id(f, form_id):
     to_return = None
     try:
         # Should be a list
-        with open(f) as json_data:
+        with open(f, encoding='utf-8') as json_data:
             obj = json.load(json_data)
             to_return = next((o for o in obj if o['form_id'] == form_id))
     except json.JSONDecodeError:
