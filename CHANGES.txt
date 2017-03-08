@@ -1,17 +1,21 @@
-v0.2.2 21 Feb 2017
+v0.2.3, 8 March 2017
+ * Happy International Women's Day!
+ * Added explicit UTF-8 encoding support for files and logging
+
+v0.2.2, 21 Feb 2017
  * Track "EA[1]" style prompts (v4 of logging)
  * Filled in CC stub
 
-v0.2.1 20 Feb 2017
+v0.2.1, 20 Feb 2017
  * RJR2 fix typos
 
-v0.2.0 15 Feb 2017
+v0.2.0, 15 Feb 2017
  * Track changes to prompt value
  * Put geographic identifiers for all rounds.
  * Write header only if starting the output CSV
  * RJR2
 
-v0.1.1 26 Jan 2017
+v0.1.1, 26 Jan 2017
  * Track "rS" event
  * Support for BFR4, KER5, NER3
  * Able to supply new JSON file form info via command line
