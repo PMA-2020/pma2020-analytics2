@@ -17,7 +17,8 @@ def setup_logging(log_level, export_directory, log_file):
     datefmt = '%m/%d/%Y %I:%M:%S %p'
     if log_file:
         log_out = os.path.join(export_directory, log_file)
-        logging.basicConfig(filename=log_out, level=level, format=fmt,
+        handlers = [logging.FileHandler(log_out, mode='w', encoding='utf-8')]
+        logging.basicConfig(handlers=handlers, level=level, format=fmt,
                             datefmt=datefmt)
     else:
         logging.basicConfig(level=level, format=fmt, datefmt=datefmt)
