@@ -223,7 +223,7 @@ class Instance:
             return
 
         full_file = os.path.join(self.full_name, self.XML)
-        with open(full_file) as open_file:
+        with open(full_file, encoding='utf-8') as open_file:
             s = open_file.read()
             for tag in self.tags:
                 pattern = f'<{tag}>([^<>]+)</{tag}>'

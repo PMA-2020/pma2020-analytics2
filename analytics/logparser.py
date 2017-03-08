@@ -23,7 +23,7 @@ class Logparser:
 
     def capture_events(self):
         events = []
-        with open(self.file, newline='') as tsvfile:
+        with open(self.file, newline='', encoding='utf-8') as tsvfile:
             reader = csv.reader(tsvfile, delimiter='\t')
 
             event_code = ''

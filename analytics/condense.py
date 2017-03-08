@@ -17,7 +17,8 @@ def setup_logging(log_level, export_directory, log_file):
     datefmt = '%m/%d/%Y %I:%M:%S %p'
     if log_file:
         log_out = os.path.join(export_directory, log_file)
-        logging.basicConfig(filename=log_out, level=level, format=fmt,
+        handlers = [logging.FileHandler(log_out, mode='w', encoding='utf-8')]
+        logging.basicConfig(handlers=handlers, level=level, format=fmt,
                             datefmt=datefmt)
     else:
         logging.basicConfig(level=level, format=fmt, datefmt=datefmt)
@@ -90,7 +91,7 @@ if __name__ == '__main__':
         old = set()
         if not args.overwrite:
             try:
-                with open(csv_output) as f:
+                with open(csv_output, encoding='utf-8') as f:
                     r = csv.reader(f)
                     old = set(line[0] for i, line in enumerate(r) if i != 0)
             except FileNotFoundError:
@@ -118,7 +119,7 @@ if __name__ == '__main__':
             prompts = form_obj['prompts'] if 'prompts' in form_obj else []
             uncaptured_prompts = set()
             mode = 'w' if args.overwrite else 'a'
-            with open(csv_output, mode=mode, newline='') as f:
+            with open(csv_output, mode=mode, newline='', encoding='utf-8') as f:
                 writer = csv.writer(f)
                 # Common to all instances, and some logging info
                 if f.tell() == 0:
