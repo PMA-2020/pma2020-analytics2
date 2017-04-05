@@ -126,8 +126,8 @@ if __name__ == '__main__':
                     header = [
                         'dir_uuid',
                         'log_version',
-                        'log_size_kb',
                         'xml_size_kb',
+                        'log_size_kb',
                         'photo_size_kb',
                         'resumed',
                         'paused',
