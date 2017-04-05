@@ -1,3 +1,7 @@
+v0.2.4, 5 April 2017
+ * Fixed erroneous column order
+ * Added NGR4, KENUTR1
+
 v0.2.3, 8 March 2017
  * Happy International Women's Day!
  * Added explicit UTF-8 encoding support for files and logging
