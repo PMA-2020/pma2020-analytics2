@@ -1,3 +1,8 @@
+v0.2.5, 12 April 2017
+ * Old forms for NGR4
+ * UGR5
+ * KENUTR1
+
 v0.2.4, 5 April 2017
  * Fixed erroneous column order
  * Added NGR4, KENUTR1
