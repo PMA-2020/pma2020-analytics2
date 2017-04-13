@@ -24,8 +24,152 @@ def setup_logging(log_level, export_directory, log_file):
         logging.basicConfig(level=level, format=fmt, datefmt=datefmt)
 
 
-if __name__ == '__main__':
+def analytics_header(prompts, tags):
+    # Common to all instances, and some logging info
+    header = [
+        'dir_uuid',
+        'log_version',
+        'xml_size_kb',
+        'log_size_kb',
+        'photo_size_kb',
+        'resumed',
+        'paused',
+        'short_break',
+        'save_count',
+        'screen_count',
+        'rS'
+    ]
+    # Get all dynamic tags
+    tag_header = tags
+    header.extend(tag_header)
+    # Get all dynamic prompts
+    for prompt in prompts:
+        chunk = [
+            f'{prompt}_CC',
+            f'{prompt}_time',
+            f'{prompt}_visits',
+            f'{prompt}_delta'
+        ]
+        header.extend(chunk)
+    return header
 
+
+def analytics_instance_row(instance, prompts, tags):
+    # Data common to all instances
+    row = [
+        instance.folder,
+        instance.log_version,
+        int(instance.xml_size / 1000),
+        int(instance.txt_size / 1000),
+        int(instance.jpg_size / 1000),
+        int(instance.resumed / 1000),
+        int(instance.paused / 1000),
+        int(instance.short_break / 1000),
+        instance.save_count,
+        instance.enter_count,
+        instance.relation_self_destruct
+    ]
+    # Get all dynamic tags
+    tag_chunk = []
+    for tag in tags:
+        try:
+            found_tag = instance.tag_data[tag]
+            # TODO: Possibly escape the data for csv
+            # csv module may do that automatically, though
+            tag_chunk.append(found_tag)
+        except KeyError:
+            tag_chunk.append(None)
+    row.extend(tag_chunk)
+    # Get all dynamic prompts
+    for prompt in prompts:
+        chunk = []
+        try:
+            cc = i.prompt_cc[prompt]
+            chunk.append(cc)
+        except KeyError:
+            chunk.append(None)
+        try:
+            timing = int(i.prompt_data[prompt]/1000)
+            chunk.append(timing)
+        except KeyError:
+            chunk.append(None)
+        try:
+            visits = i.prompt_visits[prompt]
+            chunk.append(visits)
+        except KeyError:
+            chunk.append(None)
+        try:
+            delta = i.prompt_changes[prompt]
+            chunk.append(delta)
+        except KeyError:
+            chunk.append(None)
+        row.extend(chunk)
+    return row
+
+
+def previously_analyzed(path):
+    found = set()
+    try:
+        with open(path, newline='', encoding='utf-8') as out:
+            reader = csv.reader(out)
+            found = set(line[0] for i, line in enumerate(reader) if i != 0)
+    except FileNotFoundError:
+        # csv output does not exist
+        pass
+    return found
+
+
+def schema_mismatch(path, header):
+    with open(path, newline='', encoding='utf-8') as out:
+        reader = csv.reader(out)
+        line = next(reader)
+        return line != header
+
+
+def analytics_to_csv(path, overwrite, instances_dir, prompts, tags)
+    # ---------- STEP 1: SETUP ----------
+    header = analytics_header(prompts, tags)
+    old = set()
+    if not overwrite:
+        if schema_mismatch(path, header):
+            msg = 'Analytics file schema mismatch. Use "overwrite" option.'
+            raise CondenseException(msg)
+        old = previously_analyzed(path)
+    folders = []
+    for item in os.scandir(instances_dir):
+        if item.is_dir() and item.name not in old:
+            folders.append(item.path)
+    count = len(folders)
+    if count == 0:
+        print('All up to date. No new instances to analyze.')
+        return
+    if overwrite:
+        print(f'Analyzing all {count} instances', end=' ')
+        print(f'downloaded into {instances_dir}')
+        print(f'Intended output file with overwrite: {path}')
+    else:
+        print(f'Analyzing new {count} instances', end=' ')
+        print(f'downloaded into {instances_dir}')
+        print(f'Intended output file with append: {path}')
+    mode = 'w' if overwrite else 'a'
+    uncaptured_prompts = set()
+    # ---------- STEP 2: RUN ----------
+    with open(path, mode=mode, newline='', encoding='utf-8') as out:
+        writer = csv.writer(out)
+        if out.tell() == 0:
+            writer.writerow(header)
+        for folder in folders:
+            instance = Instance(folder, prompts=prompts, tags=tags)
+            row = analytics_instance_row(instance, prompts, tags)
+            writer.writerow(row)
+            uncaptured_prompts |= i.uncaptured_prompts
+    if uncaptured_prompts:
+        msg = 'From instances in %s, discovered %d uncaptured prompts: %s'
+        logging.info(msg, instances_dir, len(uncaptured_prompts),
+                     str(uncaptured_prompts))
+
+
+def condense_cli():
     prog_desc = ('Condense all submissions under one form of ODK Briefcase '
                  'Storage into an intermediate data product for analysis.')
     parser = argparse.ArgumentParser(description=prog_desc)
@@ -48,7 +192,8 @@ if __name__ == '__main__':
 
     overwrite_help = ('Set this flag to overwrite output CSV file, otherwise '
                       'append.')
-    parser.add_argument('--overwrite', help=overwrite_help, action='store_true')
+    parser.add_argument('--overwrite', help=overwrite_help,
+                        action='store_true')
 
     log_help = ('Log level. One of DEBUG, INFO, WARNING, ERROR. If not set or '
                 'incorrect, default is DEBUG.')
@@ -70,141 +215,23 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    setup_logging(args.log_level, args.export_directory, args.log_file)
     try:
-
-        form_obj = lookup.lookup(args.form_id)
-        if args.lookup:
-            user_obj = lookup.lookup(args.form_id, src=args.lookup)
-            if user_obj and form_obj:
-                form_obj.update(user_obj)
-            elif user_obj and not form_obj:
-                form_obj = user_obj
-        if not form_obj:
-            raise CondenseException(f'Unable to find form information for '
-                                    f'{args.form_id}. Verify supplied form id '
-                                    f'and lookup data.')
-
-        inst_dir = os.path.join(args.storage_directory,
-                                'ODK Briefcase Storage', 'forms',
-                                form_obj['form_title'], 'instances')
+        # TODO: fix the try catch
+        # TODO fix lookup.lookup to work with None src and throw exception
+        form_obj = lookup.lookup(args.form_id, src=args.lookup)
+        form_title = form_obj['form_title']
+        instances_dir = os.path.join(args.storage_directory,
+                                     'ODK Briefcase Storage', 'forms',
+                                     form_title, 'instances')
         csv_output = os.path.join(args.export_directory, args.export_filename)
-        old = set()
-        if not args.overwrite:
-            try:
-                with open(csv_output, encoding='utf-8') as f:
-                    r = csv.reader(f)
-                    old = set(line[0] for i, line in enumerate(r) if i != 0)
-            except FileNotFoundError:
-                # csv output does not exist
-                pass
-        # Build up folders to walk
-        folders = []
-        for i in os.scandir(inst_dir):
-            if i.is_dir() and i.name not in old:
-                folders.append(i.path)
-        count = len(folders)
-        if args.overwrite:
-            print(f'Analyzing all {count} instances downloaded into {inst_dir}')
-            print(f'Intended output file with overwrite: {csv_output}')
-        else:
-            print(f'Analyzing new {count} instances downloaded into {inst_dir}')
-            print(f'Intended output file with append: {csv_output}')
-        setup_logging(args.log_level, args.export_directory, args.log_file)
-        logging.info('Logging record for form_id "%s"', args.form_id)
+
+        logging.info('Create logging record for form_id "%s"', args.form_id)
+        overwrite = args.overwrite
+        prompts = form_obj['prompts'] if 'prompts' in form_obj else []
+        tags = form_obj['tags'] if 'tags' in form_obj else []
         start_time = int(time.time())
-
-        # DO STUFF
-        if folders:
-            tags = form_obj['tags'] if 'tags' in form_obj else []
-            prompts = form_obj['prompts'] if 'prompts' in form_obj else []
-            uncaptured_prompts = set()
-            mode = 'w' if args.overwrite else 'a'
-            with open(csv_output, mode=mode, newline='', encoding='utf-8') as f:
-                writer = csv.writer(f)
-                # Common to all instances, and some logging info
-                if f.tell() == 0:
-                    header = [
-                        'dir_uuid',
-                        'log_version',
-                        'xml_size_kb',
-                        'log_size_kb',
-                        'photo_size_kb',
-                        'resumed',
-                        'paused',
-                        'short_break',
-                        'save_count',
-                        'screen_count',
-                        'rS'
-                    ]
-                    # Get all dynamic tags
-                    tag_header = tags
-                    header.extend(tag_header)
-                    # Get all dynamic prompts
-                    for prompt in prompts:
-                        chunk = [
-                            f'{prompt}_CC',
-                            f'{prompt}_time',
-                            f'{prompt}_visits',
-                            f'{prompt}_delta'
-                        ]
-                        header.extend(chunk)
-                    writer.writerow(header)
-                for folder in folders:
-                    i = Instance(folder, prompts=prompts, tags=tags)
-                    # Common to all instances, and some logging info
-                    row = [
-                        i.folder,
-                        i.log_version,
-                        int(i.xml_size / 1000),
-                        int(i.txt_size / 1000),
-                        int(i.jpg_size / 1000),
-                        int(i.resumed / 1000),
-                        int(i.paused / 1000),
-                        int(i.short_break / 1000),
-                        i.save_count,
-                        i.enter_count,
-                        i.relation_self_destruct
-                    ]
-                    # Get all dynamic tags
-                    tag_chunk = []
-                    for tag in tags:
-                        try:
-                            found_tag = i.tag_data[tag]
-                            # TODO: Possibly escape the data for csv
-                            # csv module may do that automatically, though
-                            tag_chunk.append(found_tag)
-                        except KeyError:
-                            tag_chunk.append(None)
-                    row.extend(tag_chunk)
-                    # Get all dynamic prompts
-                    for prompt in prompts:
-                        chunk = []
-                        try:
-                            cc = i.prompt_cc[prompt]
-                            chunk.append(cc)
-                        except KeyError:
-                            chunk.append(None)
-                        try:
-                            timing = int(i.prompt_data[prompt]/1000)
-                            chunk.append(timing)
-                        except KeyError:
-                            chunk.append(None)
-                        try:
-                            visits = i.prompt_visits[prompt]
-                            chunk.append(visits)
-                        except KeyError:
-                            chunk.append(None)
-                        try:
-                            delta = i.prompt_changes[prompt]
-                            chunk.append(delta)
-                        except KeyError:
-                            chunk.append(None)
-                        row.extend(chunk)
-
-                    writer.writerow(row)
-                    uncaptured_prompts |= i.uncaptured_prompts
-            if uncaptured_prompts:
-                logging.info('From instances in %s, discovered %d uncaptured prompts: %s', inst_dir, len(uncaptured_prompts), str(uncaptured_prompts))
+        analytics_to_csv(csv_output, overwrite, instances_dir, prompts, tags)
         end_time = int(time.time())
         diff = end_time - start_time
         if diff > 300:
@@ -215,9 +242,21 @@ if __name__ == '__main__':
              f'"{args.form_id}" after {diff_str}')
         logging.info(m)
         print(m)
+    except:
+        # TODO fix formatting here
+    if not form_obj:
+        msg = (f'Unable to find form information for {args.form_id}. Verify '
+               f'supplied form id and lookup data.')
+        print(msg)
+    else:
     except FileNotFoundError:
         print(f'No such storage directory: {inst_dir}')
     except KeyError as e:
         print('Unknown form id {}. Check lookup.py'.format(str(e)))
     except CondenseException as e:
         print(e)
+
+
+if __name__ == '__main__':
+    condense_cli()
+
