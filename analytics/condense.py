@@ -218,6 +218,7 @@ def analytics_folders_setup(path, overwrite, instances_dir, header):
         print(f'Intended output file with append: {path}')
     return folders
 
+
 def analytics_to_csv(path, overwrite, instances_dir, prompts, tags):
     """Write analytics to CSV.
 

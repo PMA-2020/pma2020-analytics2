@@ -11,7 +11,7 @@ def get_formdata():
     search = os.path.join(os.path.split(__file__)[0], '*.json')
     for path in glob.glob(search):
         try:
-            with open(path, encding='utf-8') as json_data:
+            with open(path, encoding='utf-8') as json_data:
                 obj = json.load(json_data)
                 for singleton in obj:
                     data = {}
@@ -38,14 +38,20 @@ def formdata_cli():
 
     args = parser.parse_args()
 
-    all_data = get_formdata()
-    for form in all_data:
-        show = []
-        if args.form_title:
-            show.append(form['form_title'])
-        if args.form_id:
-            show.append(form['form_id'])
-        if not any(i is None for i in show):
+    if not any((args.form_title, args.form_id)):
+        parser.print_help()
+    else:
+        all_data = get_formdata()
+        title_width = max(len(str(i['form_title'])) for i in all_data)
+        id_width = max(len(str(i['form_id'])) for i in all_data)
+        for form in all_data:
+            show = []
+            if args.form_title:
+                block = '{s:{w}}'.format(s=form['form_title'], w=title_width)
+                show.append(block)
+            if args.form_id:
+                block = '{s:{w}}'.format(s=form['form_id'], w=id_width)
+                show.append(block)
             print(*show, sep='\t')
 
 
