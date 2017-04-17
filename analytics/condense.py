@@ -167,19 +167,22 @@ def schema_mismatch(path, header):
         the CSV does not exist, returns False, for example.
     """
     mismatch = False
-    with open(path, mode='r', newline='', encoding='utf-8') as out:
-        reader = csv.reader(out)
-        try:
-            line = next(reader)
-            for i, j in itertools.zip_longest(line, header):
-                if i != j:
-                    msg = f'Header mismatch at {i} (CSV) and {j} (new)'
-                    logging.info(msg)
-                    mismatch = True
-                    break
-        except StopIteration:
-            # Empty file?
-            pass
+    try:
+        with open(path, mode='r', newline='', encoding='utf-8') as out:
+            reader = csv.reader(out)
+            try:
+                line = next(reader)
+                for i, j in itertools.zip_longest(line, header):
+                    if i != j:
+                        msg = f'Header mismatch at {i} (CSV) and {j} (new)'
+                        logging.info(msg)
+                        mismatch = True
+                        break
+            except StopIteration:
+                # Empty file?
+                pass
+    except FileNotFoundError:
+        pass
     return mismatch
 
 
@@ -329,7 +332,7 @@ def condense_cli():
                f'"{args.form_id}" after {diff_str}')
         logging.info(msg)
         print(msg)
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         print(f'No such storage directory: {args.storage_directory}')
     except KeyError as e:
         print('Unknown form id {}. Check lookup.py'.format(str(e)))
