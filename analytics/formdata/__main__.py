@@ -52,7 +52,7 @@ def formdata_cli():
             if args.form_id:
                 block = '{s:{w}}'.format(s=form['form_id'], w=id_width)
                 show.append(block)
-            print(*show, sep='\t')
+            print(*show, sep='    ')
 
 
 if __name__ == '__main__':
