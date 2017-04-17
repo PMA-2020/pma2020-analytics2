@@ -19,7 +19,12 @@ class Logparser:
         self.folder = os.path.split(os.path.split(f)[0])[1]
         self.version = None
 
-        self.events = self.capture_events()
+        self.events = []
+        try:
+            self.events = self.capture_events()
+        except csv.Error:
+            logging.error('[%s] Abandoned due to file parsing error',
+                          self.folder)
 
     def capture_events(self):
         events = []
