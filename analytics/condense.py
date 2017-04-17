@@ -1,5 +1,8 @@
+"""High level functions to generate analytics file for PMA2020 ODK."""
+
 import argparse
 import csv
+import itertools
 import logging
 import os.path
 import time
@@ -10,6 +13,13 @@ from analytics.instance import Instance
 
 
 def setup_logging(log_level, export_directory, log_file):
+    """Initialize logging when condense module is run as main.
+
+    Args:
+        log_level (str): The logging level, e.g. DEBUG
+        export_directory (str): The path to the analytics export directory
+        log_file (str): The path where to save the log. Use None for STDERR.
+    """
     level = getattr(logging, log_level if log_level is not None else "", None)
     if not isinstance(level, int):
         level = logging.DEBUG
@@ -25,6 +35,15 @@ def setup_logging(log_level, export_directory, log_file):
 
 
 def analytics_header(prompts, tags):
+    """Get the analytics header for the resultant CSV file.
+
+    Args:
+        prompts (seq of str): The prompts to capture from log.txt files
+        tags (seq of str): The XML tags to extract from submission.xml files
+
+    Returns:
+        A list of headers (str) to be used in the CSV.
+    """
     # Common to all instances, and some logging info
     header = [
         'dir_uuid',
@@ -55,6 +74,16 @@ def analytics_header(prompts, tags):
 
 
 def analytics_instance_row(instance, prompts, tags):
+    """Convert an instance object to a row for the CSV.
+
+    Args:
+        instance (analytics.Instance): An instance object
+        prompts (seq of str): The prompts to capture from log.txt files
+        tags (seq of str): The XML tags to extract from submission.xml files
+
+    Returns:
+        A list of values to be used as a row of the CSV.
+    """
     # Data common to all instances
     row = [
         instance.folder,
@@ -74,8 +103,6 @@ def analytics_instance_row(instance, prompts, tags):
     for tag in tags:
         try:
             found_tag = instance.tag_data[tag]
-            # TODO: Possibly escape the data for csv
-            # csv module may do that automatically, though
             tag_chunk.append(found_tag)
         except KeyError:
             tag_chunk.append(None)
@@ -84,22 +111,22 @@ def analytics_instance_row(instance, prompts, tags):
     for prompt in prompts:
         chunk = []
         try:
-            cc = i.prompt_cc[prompt]
-            chunk.append(cc)
+            this_cc = instance.prompt_cc[prompt]
+            chunk.append(this_cc)
         except KeyError:
             chunk.append(None)
         try:
-            timing = int(i.prompt_data[prompt]/1000)
+            timing = int(instance.prompt_data[prompt]/1000)
             chunk.append(timing)
         except KeyError:
             chunk.append(None)
         try:
-            visits = i.prompt_visits[prompt]
+            visits = instance.prompt_visits[prompt]
             chunk.append(visits)
         except KeyError:
             chunk.append(None)
         try:
-            delta = i.prompt_changes[prompt]
+            delta = instance.prompt_changes[prompt]
             chunk.append(delta)
         except KeyError:
             chunk.append(None)
@@ -108,6 +135,15 @@ def analytics_instance_row(instance, prompts, tags):
 
 
 def previously_analyzed(path):
+    """Get the instance uuids (folders) that are already in the CSV.
+
+    Args:
+        path (str): The path to where the CSV is
+
+    Returns:
+        A set of instance uuids that were found in the CSV. Empty set if no
+        file.
+    """
     found = set()
     try:
         with open(path, newline='', encoding='utf-8') as out:
@@ -120,30 +156,59 @@ def previously_analyzed(path):
 
 
 def schema_mismatch(path, header):
-    with open(path, newline='', encoding='utf-8') as out:
+    """Return True if the supplied and CSV headers are not compatible.
+
+    Args:
+        path (str): The path to where the CSV is
+        header (seq of str): A header to match against
+
+    Returns:
+        True if and only if there would be problems combining data. Thus, if
+        the CSV does not exist, returns False, for example.
+    """
+    mismatch = False
+    with open(path, mode='r', newline='', encoding='utf-8') as out:
         reader = csv.reader(out)
-        line = next(reader)
-        return line != header
+        try:
+            line = next(reader)
+            for i, j in itertools.zip_longest(line, header):
+                if i != j:
+                    msg = f'Header mismatch at {i} (CSV) and {j} (new)'
+                    logging.info(msg)
+                    mismatch = True
+                    break
+        except StopIteration:
+            # Empty file?
+            pass
+    return mismatch
 
 
-def analytics_to_csv(path, overwrite, instances_dir, prompts, tags)
-    # ---------- STEP 1: SETUP ----------
-    header = analytics_header(prompts, tags)
+def analytics_folders_setup(path, overwrite, instances_dir, header):
+    """Initialize the folders to analyze for analytics.
+
+    Args:
+        path (str): The path for the resultant CSV
+        overwrite (bool): True iff the any existing CSV should be overwritten
+        instances_dir (str): The parent directory containing all instances
+        header (seq of str): A header to match CSV against
+
+    Returns:
+        A list of folders to analyze.
+    """
+    folders = []
     old = set()
     if not overwrite:
         if schema_mismatch(path, header):
             msg = 'Analytics file schema mismatch. Use "overwrite" option.'
             raise CondenseException(msg)
         old = previously_analyzed(path)
-    folders = []
     for item in os.scandir(instances_dir):
         if item.is_dir() and item.name not in old:
             folders.append(item.path)
     count = len(folders)
     if count == 0:
         print('All up to date. No new instances to analyze.')
-        return
-    if overwrite:
+    elif overwrite:
         print(f'Analyzing all {count} instances', end=' ')
         print(f'downloaded into {instances_dir}')
         print(f'Intended output file with overwrite: {path}')
@@ -151,6 +216,23 @@ def analytics_to_csv(path, overwrite, instances_dir, prompts, tags)
         print(f'Analyzing new {count} instances', end=' ')
         print(f'downloaded into {instances_dir}')
         print(f'Intended output file with append: {path}')
+    return folders
+
+def analytics_to_csv(path, overwrite, instances_dir, prompts, tags):
+    """Write analytics to CSV.
+
+    Args:
+        path (str): The path for the resultant CSV
+        overwrite (bool): True iff the any existing CSV should be overwritten
+        instances_dir (str): The parent directory containing all instances
+        prompts (seq of str): The prompts to capture from log.txt files
+        tags (seq of str): The XML tags to extract from submission.xml files
+    """
+    # ---------- STEP 1: SETUP ----------
+    header = analytics_header(prompts, tags)
+    folders = analytics_folders_setup(path, overwrite, instances_dir, header)
+    if not folders:
+        return
     mode = 'w' if overwrite else 'a'
     uncaptured_prompts = set()
     # ---------- STEP 2: RUN ----------
@@ -162,14 +244,15 @@ def analytics_to_csv(path, overwrite, instances_dir, prompts, tags)
             instance = Instance(folder, prompts=prompts, tags=tags)
             row = analytics_instance_row(instance, prompts, tags)
             writer.writerow(row)
-            uncaptured_prompts |= i.uncaptured_prompts
+            uncaptured_prompts |= instance.uncaptured_prompts
     if uncaptured_prompts:
         msg = 'From instances in %s, discovered %d uncaptured prompts: %s'
         logging.info(msg, instances_dir, len(uncaptured_prompts),
                      str(uncaptured_prompts))
 
 
-def condense_cli():
+def condense_cli_args():
+    """Get CLI arguments."""
     prog_desc = ('Condense all submissions under one form of ODK Briefcase '
                  'Storage into an intermediate data product for analysis.')
     parser = argparse.ArgumentParser(description=prog_desc)
@@ -214,11 +297,14 @@ def condense_cli():
     parser.add_argument('--config', help=config_help)
 
     args = parser.parse_args()
+    return args
 
+
+def condense_cli():
+    """Run the CLI for condense, the main entry point for PMA analytics."""
+    args = condense_cli_args()
     setup_logging(args.log_level, args.export_directory, args.log_file)
     try:
-        # TODO: fix the try catch
-        # TODO fix lookup.lookup to work with None src and throw exception
         form_obj = lookup.lookup(args.form_id, src=args.lookup)
         form_title = form_obj['form_title']
         instances_dir = os.path.join(args.storage_directory,
@@ -238,19 +324,12 @@ def condense_cli():
             diff_str = "{0:.2f} minutes".format(diff/60)
         else:
             diff_str = "{} seconds".format(diff)
-        m = (f'Finished condensing data to "{csv_output}" for form_id '
-             f'"{args.form_id}" after {diff_str}')
-        logging.info(m)
-        print(m)
-    except:
-        # TODO fix formatting here
-    if not form_obj:
-        msg = (f'Unable to find form information for {args.form_id}. Verify '
-               f'supplied form id and lookup data.')
+        msg = (f'Finished condensing data to "{csv_output}" for form_id '
+               f'"{args.form_id}" after {diff_str}')
+        logging.info(msg)
         print(msg)
-    else:
     except FileNotFoundError:
-        print(f'No such storage directory: {inst_dir}')
+        print(f'No such storage directory: {args.storage_directory}')
     except KeyError as e:
         print('Unknown form id {}. Check lookup.py'.format(str(e)))
     except CondenseException as e:
@@ -259,4 +338,3 @@ def condense_cli():
 
 if __name__ == '__main__':
     condense_cli()
-
