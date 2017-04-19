@@ -175,7 +175,7 @@ def schema_mismatch(path, header):
                 for i, j in itertools.zip_longest(line, header):
                     if i != j:
                         msg = f'Header mismatch at {i} (CSV) and {j} (new)'
-                        logging.info(msg)
+                        logging.error(msg)
                         mismatch = True
                         break
             except StopIteration:
