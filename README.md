@@ -85,6 +85,32 @@ The `analytics.formdata` subpackage has a command line interface to display the 
 python3 -m analytics.formdata -fi
 ```
 
+## Understanding the logging
+
+As analytics runs, it emits logging messages. The standard levels, in order of increasing severity, are `DEBUG`, `INFO`, `WARNING`, and `ERROR`. Analytics uses all of these to convey specific meaning.
+
+### `DEBUG`
+
+Information that is useful for debugging. Analytics uses `DEBUG` to say which instance (folder) is currently being analyzed.
+
+### `INFO`
+
+High-level information about the running program.
+
+* What form id is being analyzed.
+* When the analysis completes
+
+### `WARNING`
+
+When `WARNING` is about the logs, it typically means something with the potential to be problematic has occurred. Usually, however, this is not a cause for concern.
+
+### `ERROR`
+
+This is used when something happens that prevents the analytics from completing its task.
+
+* The analytics file column headers do not match what data is to be appended.
+* Some problem with the file prevents its analysis (e.g. corrupt file).
+
 ## Updates
 
 ```
