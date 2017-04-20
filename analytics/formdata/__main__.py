@@ -15,8 +15,9 @@ def get_formdata():
                 obj = json.load(json_data)
                 for singleton in obj:
                     data = {}
-                    data['form_title'] = singleton.get('form_title', None)
-                    data['form_id'] = singleton.get('form_id', None)
+                    data['form_title'] = singleton.get('form_title', '')
+                    data['form_id'] = singleton.get('form_id', '')
+                    data['created'] = singleton.get('created', '')
                     all_data.append(data)
         except json.JSONDecodeError:
             pass
@@ -36,23 +37,28 @@ def formdata_cli():
     parser.add_argument('-i', '--form_id', action='store_true',
                         help=form_id_help)
 
-    args = parser.parse_args()
+    date_help = 'Show the date the form was added'
+    parser.add_argument('-d', '--date', action='store_true', help=date_help)
 
-    if not any((args.form_title, args.form_id)):
-        parser.print_help()
-    else:
-        all_data = get_formdata()
-        title_width = max(len(str(i['form_title'])) for i in all_data)
-        id_width = max(len(str(i['form_id'])) for i in all_data)
-        for form in all_data:
-            show = []
-            if args.form_title:
-                block = '{s:{w}}'.format(s=form['form_title'], w=title_width)
-                show.append(block)
-            if args.form_id:
-                block = '{s:{w}}'.format(s=form['form_id'], w=id_width)
-                show.append(block)
-            print(*show, sep='    ')
+    args = parser.parse_args()
+    show_all = not any((args.form_title, args.form_id, args.date))
+
+    all_data = get_formdata()
+    title_width = max(len(str(i['form_title'])) for i in all_data)
+    id_width = max(len(str(i['form_id'])) for i in all_data)
+    date_width = max(len(str(i['created'])) for i in all_data)
+    for form in all_data:
+        show = []
+        if show_all or args.form_title:
+            block = '{s:{w}}'.format(s=form['form_title'], w=title_width)
+            show.append(block)
+        if show_all or args.form_id:
+            block = '{s:{w}}'.format(s=form['form_id'], w=id_width)
+            show.append(block)
+        if show_all or args.date:
+            block = '{s:{w}}'.format(s=form['created'], w=date_width)
+            show.append(block)
+        print(*show, sep='    ')
 
 
 if __name__ == '__main__':
