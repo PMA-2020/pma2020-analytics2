@@ -82,8 +82,15 @@ An example is given below.
 The `analytics.formdata` subpackage has a command line interface to display the supported form titles and form ids. Use:
 
 ```
-python3 -m analytics.formdata -fi
+python3 -m analytics.formdata
 ```
+
+Then pipe to `grep` to filter results. For example, in order to see the supported forms for Uganda round 5, use
+
+```
+python3 -m analytics.formdata | grep UGR5
+```
+
 
 ## Understanding the logging
 
