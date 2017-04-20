@@ -37,7 +37,7 @@ def formdata_cli():
     parser.add_argument('-i', '--form_id', action='store_true',
                         help=form_id_help)
 
-    date_help = 'Show the date the form was added'
+    date_help = 'Show the date the form was added. Not very useful alone.'
     parser.add_argument('-d', '--date', action='store_true', help=date_help)
 
     args = parser.parse_args()
@@ -58,7 +58,9 @@ def formdata_cli():
         if show_all or args.date:
             block = '{s:{w}}'.format(s=form['created'], w=date_width)
             show.append(block)
-        print(*show, sep='    ')
+        line = '    '.join(show)
+        if not line.isspace():
+            print(line)
 
 
 if __name__ == '__main__':

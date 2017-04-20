@@ -297,9 +297,6 @@ def condense_cli_args():
                    '"TAGN"]} at a minimum')
     parser.add_argument('--lookup', help=lookup_help)
 
-    config_help = 'Path to a config file, a JSON dictionary'
-    parser.add_argument('--config', help=config_help)
-
     args = parser.parse_args()
     return args
 
@@ -332,10 +329,10 @@ def condense_cli():
                f'"{args.form_id}" after {diff_str}')
         logging.info(msg)
         print(msg)
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         print(f'No such storage directory: {args.storage_directory}')
     except KeyError as e:
-        print('Unknown form id {}. Check lookup.py'.format(str(e)))
+        print(e)
     except CondenseException as e:
         print(e)
 
