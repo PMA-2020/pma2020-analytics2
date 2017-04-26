@@ -4,3 +4,7 @@ class CondenseException(Exception):
 
 class LookupException(Exception):
     pass
+
+
+class LogparserException(Exception):
+    pass

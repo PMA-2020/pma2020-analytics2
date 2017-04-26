@@ -1,3 +1,4 @@
+"""Module to contain the Instance class, representing one instance."""
 import glob
 import logging
 import os.path
@@ -8,23 +9,111 @@ from analytics.event import Event
 
 
 class Instance:
+    """The Instance class represents one instance to be analyzed.
 
+    When an instance is analyzed, many pieces of information are pulled
+    together and stored in an instance object.
+
+    The most basic information is file sizes for photos, XML, and .txt
+    documents. Next, values stored in XML tags are extracted from the
+    submission.xml file. Finally, the log is parsed and several aspects are
+    recorded.
+
+    Data about the overall questionnaire:
+        * Log version
+        * Total resumed time
+        * Total paused time
+        * Total short break time (paused time if less than a threshold)
+        * Total save count
+        * Total prompt visit count
+        * Total times a subform self-deleted (e.g. age displacement).
+
+    Data about individual prompts:
+        * Total resumed time per prompt
+        * Total paused time per prompt (at the same prompt, oP -> oR)
+        * Count of prompt value changes
+        * Prompt visit count
+        * Count of contravened constraint / required by prompt
+
+    Class attributes:
+        COUNT (int): Count that increments with each instance created
+        LOG (str): log file name
+        XML (str): XML submission file name
+        TWO_HR (int): Two hours in milliseconds
+        THIRTY_MIN (int): Thirty minutes in milliseconds
+        TEN_SEC (int): Ten seconds in milliseconds
+        ONE_SWIPE (int): The length of time for one swipe, arbitrarily set
+
+    TODO:
+        * Support for milestones (first time a prompt is seen)
+        * Support for config (to override default cutoffs)
+    """
+
+    COUNT = 0
     LOG = 'log.txt'
     XML = 'submission.xml'
     TWO_HR = 7_200_000
     THIRTY_MIN = 1_800_000
     TEN_SEC = 10_000
     ONE_SWIPE = 400
-    INSTANCE = 0
 
-    def __init__(self, name, prompts=None, milestones=None, tags=None, config=None):
+    def __init__(self, name, prompts=None, tags=None):
+        """Initialize and analyze an instance.
+
+        All analysis happens in during object initialization.
+
+        Some instance variables are initialized in other methods.
+
+        Args:
+            prompts (seq of str): Prompt names to analyze from log.txt
+            tags (seq of str): XML tag names to extract from submission.xml
+        """
         self.full_name = name
         self.folder = os.path.split(self.full_name)[1]
 
-        Instance.INSTANCE += 1
-        logging.debug("[%s] Beginning work (%d)", self.folder, self.INSTANCE)
+        # Initialize thresholds
+        self.initialize_constants()
 
+        Instance.COUNT += 1
+        logging.debug("[%s] Beginning work (%d)", self.folder, self.COUNT)
 
+        # General file size information
+        self.summarize_file_sizes()
+
+        # Individual XML tag information
+        self.tags = tags if tags else []
+        self.tag_data = {}
+
+        self.summarize_xml()
+
+        # Overall questionnaire data
+        self.log_version = None
+        self.resumed = 0
+        self.paused = 0
+        self.short_break = 0
+        self.save_count = 0
+        self.enter_count = 0
+        self.relation_self_destruct = 0
+        # Individual prompt information
+        self.prompts = prompts if prompts else []
+        self.prompt_resumed = {}
+        self.prompt_paused = {}
+        self.prompt_cc = {}
+        self.prompt_visits = {}
+        self.prompt_changes = {}
+        self.prompt_value = {}
+        self.uncaptured_prompts = set()
+
+        self.summarize_log()
+
+    def initialize_constants(self):
+        """Initialize constants and thresholds for analysis."""
+        self.short_break_threshold = self.THIRTY_MIN
+        self.event_threshold = self.ONE_SWIPE
+        self.relation_threshold = self.TEN_SEC
+
+    def summarize_file_sizes(self):
+        """Get the sizes of various files in bytes."""
         self.xml = self.find_files(self.XML)
         self.txt = self.find_files(self.LOG)
         self.jpg = self.find_files('*.[jJ][pP][gG]', '*.[jJ][pP][eE][gG]')
@@ -33,52 +122,71 @@ class Instance:
         self.txt_size = self.file_size(*self.txt)
         self.jpg_size = self.file_size(*self.jpg)
 
-        self.prompts = prompts if prompts else []
-        self.milestones = milestones if milestones else []
-        self.tags = tags if tags else []
 
-        self.prompt_data = {}
-        self.prompt_cc = {}
-        self.prompt_visits = {}
-        self.prompt_changes = {}
-        self.prompt_value = {}
-        self.uncaptured_prompts = set()
+    def find_files(self, *pattern):
+        """Look for the given patterns in the instance directory.
 
-        self.milestone_data = {}
-        self.tag_data = {}
+        Args:
+            *pattern (str): Any number of patterns to search for
 
-        self.resumed = 0
-        self.paused = 0
-        self.short_break = 0
+        Returns:
+            Returns all found files that match any of the supplied patterns.
+        """
+        all_found = []
+        for p in pattern:
+            full_pattern = os.path.join(self.full_name, p)
+            found = glob.glob(full_pattern)
+            all_found.extend(found)
+        return all_found
 
-        self.save_count = 0
-        self.enter_count = 0
-        self.relation_self_destruct = 0
+    @staticmethod
+    def file_size(*files):
+        """Return the total size in bytes of all the supplied files.
 
-        self.log_version = None
+        Args:
+            *files (str): Any number of paths to files
 
-        if config:
-            self.short_break_threshold = config.get('short_break_threshold', self.THIRTY_MIN)
-            self.event_threshold = config.get('event_threshold', self.ONE_SWIPE)
-            self.relation_threshold = config.get('relation_threshold', self.TEN_SEC)
-        else:
-            self.short_break_threshold = self.THIRTY_MIN
-            self.event_threshold = self.ONE_SWIPE
-            self.relation_threshold = self.TEN_SEC
+        Returns:
+            An integer containing sum of file sizes
+        """
+        return sum((os.path.getsize(f) for f in files))
 
+    def summarize_xml(self):
+        """Get needed information from 'submission.xml'.
+
+        The XML file is read into memory and each tag that is found in the
+        document gets its value saved in a dictionary of tag data.
+        """
         if len(self.xml) != 1:
-            logging.info('[%s] Number of xml files found: %d', self.folder,
-                            len(self.xml))
-        else:
-            self.summarize_xml()
+            logging.error('[%s] Number of xml files found: %d', self.folder,
+                          len(self.xml))
+            return
+        if not self.tags:
+            return
 
-        if len(self.txt) != 1:
-            logging.info('[%s] Number of txt files found: %d', self.folder,
-                            len(self.txt))
-        else:
-            self.summarize_log()
+        full_file = os.path.join(self.full_name, self.XML)
+        with open(full_file, encoding='utf-8') as open_file:
+            s = open_file.read()
+            for tag in self.tags:
+                pattern = f'<{tag}>([^<>]+)</{tag}>'
+                match = re.search(pattern, s)
+                if match:
+                    value = match.group(1)
+                    self.tag_data[tag] = value
 
     def summarize_log(self):
+        """Get needed information from log.txt.
+
+        This is where the bulk of the work is done. The log is read into
+        memory. It is parsed into discrete events and analyzed step by step.
+        Along the way, other information (e.g. overall questionnaire level) is
+        saved to the instance.
+        """
+        if len(self.txt) != 1:
+            logging.error('[%s] Number of txt files found: %d', self.folder,
+                          len(self.txt))
+            return
+
         full_file = os.path.join(self.full_name, self.LOG)
         parser = Logparser(full_file, event_threshold=self.event_threshold,
                            relation_threshold=self.relation_threshold)
@@ -203,10 +311,10 @@ class Instance:
 
     def update_screen_time(self, prompt, time_diff):
         if prompt in self.prompts:
-            if prompt in self.prompt_data:
-                self.prompt_data[prompt] += time_diff
+            if prompt in self.prompt_resumed:
+                self.prompt_resumed[prompt] += time_diff
             else:
-                self.prompt_data[prompt] = time_diff
+                self.prompt_resumed[prompt] = time_diff
 
     def update_resumed(self, resumed_diff):
         if 0 < resumed_diff:
@@ -218,53 +326,11 @@ class Instance:
         if 0 < paused_diff < self.short_break_threshold:
             self.short_break += paused_diff
 
-    def summarize_xml(self):
-        if not self.tags:
-            return
-
-        full_file = os.path.join(self.full_name, self.XML)
-        with open(full_file, encoding='utf-8') as open_file:
-            s = open_file.read()
-            for tag in self.tags:
-                pattern = f'<{tag}>([^<>]+)</{tag}>'
-                match = re.search(pattern, s)
-                if match:
-                    value = match.group(1)
-                    self.tag_data[tag] = value
-
-    def find_files(self, *pattern):
-        all_found = []
-        for p in pattern:
-            full_pattern = os.path.join(self.full_name, p)
-            found = glob.glob(full_pattern)
-            all_found.extend(found)
-        return all_found
-
-    @staticmethod
-    def file_size(*files):
-        return sum((os.path.getsize(f) for f in files))
-
     def __repr__(self):
+        """Get the representation of this instance."""
         return f'Instance("{self.full_name}")'
 
     def __str__(self):
+        """Get the string representation of this instance."""
         return repr(self)
 
-
-if __name__ == '__main__':
-    name = '/Users/jpringle/Documents/odkbriefcase/ODK Briefcase Storage/forms/RJR1-Female-Questionnaire-v12/instances/uuidba5203dd-e3ea-4385-aef5-890503e8247a'
-    name = '/Users/jpringle/Documents/odkbriefcase/ODK Briefcase Storage/forms/RJR1-Female-Questionnaire-v12/instances/uuid1ea1776c-45e8-465c-b6a8-5ac5e031cf9b'
-    prompts = ['structure', 'heard_implants', 'witness_auto', 'birthdate', 'fp_final_decision', 'facility_fp_discussion', 'heard_withdrawal', 'heard_pill', 'EA', 'heard_female_sterilization', 'pregnancy_desired', 'fp_told_other_methods', 'bus_cur_marr', 'name_check', 'visited_by_health_worker', 'last_time_sex_value', 'bus_rec_birth', 'wait_birth_some', 'fp_side_effects', 'recent_birth', 'begin_interview', 'pregnant', 'age', 'births_live_all', 'location_confirmation', 'heard_rhythm', 'fp_ad_label', 'school', 'times_visited', 'heard_male_condoms', 'consent_start', 'fp_ad_tv', 'visited_fac_some', 'available', 'more_children_some', 'husband_cohabit_now', 'privacy_warn', 'age_at_first_use_children', 'heard_IUD', 'heard_emergency', 'firstname', 'fp_ad_prompt', 'system_date_check', 'consent', 'fp_obtain_desired', 'heard_injectables', 'bus_prompt', 'FQ_age', 'Section_4', 'heard_male_sterilization', 'birth_last_note', 'birth_events', 'marriage_history', 'collect_water_dry_value', 'current_method_check', 'afsq', 'collect_water_wet', 'Section_1', 'age_note', 'first_method_check', 'current_method', 'level2', 'heard_LAM', 'system_date', 'birth_desired', 'photo_of_home', 'future_prompt', 'aquainted', 'child_alive', 'fp_ad_magazine', 'age_at_first_sex', 'heard_other', 'heard_female_condoms', 'age_at_first_use', 'marital_status', 'menstrual_period', 'your_name', 'Section_3', 'level1', 'fp_ad_radio', 'return_to_provider', 'Section_2', 'other_wives', 'fp_provider', 'FRS_result', 'current_user', 'photo_confirmation', 'heard_beads', 'first_method', 'thankyou', 'location', 'collect_water_wet_value', 'household', 'collect_water_dry', 'birth_note', 'fp_provider_check', 'privacy_warn2', 'menstrual_period_value', 'bday_note', 'refer_to_relative', 'location_prompt', 'first_birth', 'your_name_check', 'penultimate_birth', 'last_time_sex', 'ltsq', 'level3', 'begin_using', 'visited_fac_none', 'husband_cohabit_start_recent', 'fees_12months']
-    i = Instance(name, prompts=prompts)
-    print(i)
-    print(i.folder)
-    print(i.xml_size)
-    print(i.txt_size)
-    print(i.jpg_size)
-    print(i.resumed)
-    print(i.paused)
-    print(i.short_break)
-    print(i.prompt_data)
-    print(i.prompt_cc)
-    print(i.prompt_visits)
-    print(i.uncaptured_prompts)
