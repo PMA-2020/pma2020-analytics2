@@ -4,7 +4,7 @@ import re
 from analytics.exception import LogparserException
 
 
-class Event: # pylint: disable=too-many-instance-attributes
+class Event:  # pylint: disable=too-many-instance-attributes
     """The Event class for capturing discrete events in a log file.
 
     Class attributes:
@@ -18,6 +18,7 @@ class Event: # pylint: disable=too-many-instance-attributes
         bookend_xpaths (set of str): Log xpaths for a bookend event
         multiples (set of str): Codes that can correctly be repeated in a log
     """
+
     RELATION = 'RELATION'
     BOOKEND = 'BOOKEND'
     QUESTION = 'QUESTION'
@@ -26,7 +27,6 @@ class Event: # pylint: disable=too-many-instance-attributes
     bookends = {'BF', 'FF'}
     bookend_xpaths = {'uC', 'BF', 'FF', 'null'}
     multiples = {'rS', 'SF', 'CC'}
-
 
     def __init__(self, row, line):
         """Initialize the event with a single row.
@@ -72,7 +72,6 @@ class Event: # pylint: disable=too-many-instance-attributes
             row (list): A row from the log. The time must come as int
             line (int): The line number in the log where this row comes from
         """
-
         this_time = row[0]
         this_code = row[1]
 
