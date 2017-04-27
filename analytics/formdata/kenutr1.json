@@ -118,7 +118,7 @@
       "HHQ_result"
     ],
     "tags": [
-      "your_name", "name_typed", "level1", "level2", "level3", "level4", "EA", "deviceid", "start", "end", "HHQ_result"
+      "your_name", "name_typed", "level1", "level2", "level3", "level4", "EA", "structure", "household", "deviceid", "start", "end", "HHQ_result"
     ],
     "__comment": "end object for HQ"
   },
@@ -544,7 +544,7 @@
       "FRS_result"
     ],
     "tags": [
-      "your_name", "name_typed", "level1", "level2", "level3", "level4", "EA", "level1_unlinked", "level2_unlinked", "level3_unlinked", "level4_unlinked", "EA_unlinked", "deviceid", "start", "end", "FRS_result"
+      "your_name", "name_typed", "level1", "level2", "level3", "level4", "EA", "structure", "household", "level1_unlinked", "level2_unlinked", "level3_unlinked", "level4_unlinked", "EA_unlinked", "structure_unlinked", "household_unlinked", "deviceid", "start", "end", "FRS_result"
     ],
     "__comment": "end object for FQ"
   },
