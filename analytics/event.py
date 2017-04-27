@@ -26,7 +26,7 @@ class Event:  # pylint: disable=too-many-instance-attributes
     relations = {'rC', 'rV', 'rS'}
     bookends = {'BF', 'FF'}
     bookend_xpaths = {'uC', 'BF', 'FF', 'null'}
-    multiples = {'rS', 'SF', 'CC'}
+    multiples = {'LF', 'FF', 'rV', 'rS', 'SF', 'CC'}
 
     def __init__(self, row, line):
         """Initialize the event with a single row.
@@ -140,6 +140,11 @@ class Event:  # pylint: disable=too-many-instance-attributes
             else:
                 yield xpath
 
+    def is_repeatable(self):
+        """Return true iff the current event code is repeatable in a log."""
+        repeatable = self.code in self.multiples
+        return repeatable
+
     def __str__(self):
         """Get the string representation of this instnace."""
         n_row = len(self.rows)
@@ -149,6 +154,10 @@ class Event:  # pylint: disable=too-many-instance-attributes
     def __iter__(self):
         """Return an iterator over the rows in this event."""
         return iter(self.rows)
+
+    def __len__(self):
+        """Return the number of log rows in this event."""
+        return len(self.rows)
 
     def __sub__(self, other):
         """Subtract the times from this Event with another."""

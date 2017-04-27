@@ -1,4 +1,4 @@
-"""Module to contain the Instance class, representing one instance."""
+"""Module to contain the Instance class, representing one ODK instance."""
 import glob
 import logging
 import os.path
@@ -8,7 +8,8 @@ from analytics.logparser import Logparser
 from analytics.event import Event
 
 
-class Instance:
+class Instance:  # pylint: disable=too-many-instance-attributes
+    # pylint: disable=too-many-public-methods
     """The Instance class represents one instance to be analyzed.
 
     When an instance is analyzed, many pieces of information are pulled
@@ -97,7 +98,7 @@ class Instance:
         # Individual prompt information
         self.prompts = prompts if prompts else []
         self.prompt_resumed = {}
-        self.prompt_paused = {}
+        self.prompt_short_break = {}
         self.prompt_cc = {}
         self.prompt_visits = {}
         self.prompt_changes = {}
@@ -122,7 +123,6 @@ class Instance:
         self.txt_size = self.file_size(*self.txt)
         self.jpg_size = self.file_size(*self.jpg)
 
-
     def find_files(self, *pattern):
         """Look for the given patterns in the instance directory.
 
@@ -133,8 +133,8 @@ class Instance:
             Returns all found files that match any of the supplied patterns.
         """
         all_found = []
-        for p in pattern:
-            full_pattern = os.path.join(self.full_name, p)
+        for i in pattern:
+            full_pattern = os.path.join(self.full_name, i)
             found = glob.glob(full_pattern)
             all_found.extend(found)
         return all_found
@@ -166,10 +166,10 @@ class Instance:
 
         full_file = os.path.join(self.full_name, self.XML)
         with open(full_file, encoding='utf-8') as open_file:
-            s = open_file.read()
+            contents = open_file.read()
             for tag in self.tags:
                 pattern = f'<{tag}>([^<>]+)</{tag}>'
-                match = re.search(pattern, s)
+                match = re.search(pattern, contents)
                 if match:
                     value = match.group(1)
                     self.tag_data[tag] = value
@@ -183,83 +183,142 @@ class Instance:
         saved to the instance.
         """
         if len(self.txt) != 1:
-            logging.error('[%s] Number of txt files found: %d', self.folder,
-                          len(self.txt))
+            msg = '[%s] Number of txt files found: %d'
+            logging.error(msg, self.folder, len(self.txt))
             return
 
         full_file = os.path.join(self.full_name, self.LOG)
         parser = Logparser(full_file, event_threshold=self.event_threshold,
                            relation_threshold=self.relation_threshold)
-
         self.log_version = parser.version
+        state = LogParseState()
+        for event in parser:
+            self.check_event_order(event, state)
+            self.track_resume_pause(event, state)
+            self.track_question_resumed_time(event, state)
+            self.track_countables(event)
+            self.track_prompt_value(event)
 
-        resumed_token = None
-        paused_token = None
-        enter_token = None
-        last_token = None
+    def check_event_order(self, event, state):
+        """Check if the event is out of order with the analysis state.
 
-        for token in parser:
+        Sends a message to logging if incorrect conditions are observed.
 
-            if last_token and resumed_token and last_token > token:
-                logging.warning('[%s] Out of order tokens: %s and %s', self.folder, str(last_token), str(token))
-            if token.stage == Event.ERROR:
-                logging.warning('[%s] Unknown event: %s', self.folder, str(token))
+        Args:
+            event (Event): The next event to analyze
+            state (LogParseState): The state of the log-event analysis
+        """
+        if state.prev_event and state.prev_event > event:
+            msg = '[{}] Out of order events: {} and {}'
+            msg = msg.format(self.folder, state.prev_event, event)
+            logging.warning(msg)
 
-            # Track onResume -> onPause
-            if token.code == 'oR':
-                if paused_token is None and resumed_token is None:
-                    resumed_token = token
-                elif paused_token is not None and resumed_token is None:
-                    paused_diff = token - paused_token
-                    self.update_paused(paused_diff)
-                    resumed_token = token
-                    paused_token = None
-            elif token.code == 'oP':
-                if resumed_token is None and paused_token is None:
-                    logging.warning('In %s, oP found before oR: %s', self.folder, str(token))
-                elif resumed_token is not None and paused_token is None:
-                    resumed_diff = token - resumed_token
-                    if resumed_diff > self.TWO_HR:
-                        logging.warning('[%s] Resumed time greater than 2hr between %s and %s', self.folder, resumed_token, token)
-                    self.update_resumed(resumed_diff)
-                    paused_token = token
-                    resumed_token = None
+    def track_resume_pause(self, event, state):
+        """Track state in relation to onResume and onPause.
 
-            # Track time in each question
-            if token.code == 'oR' or token.code == 'EP':
-                if token.stage == Event.QUESTION:
-                    enter_token = token
-            elif token.code == 'oP' or token.code == 'LP':
-                if token.stage == Event.QUESTION:
-                    self.screen_time(enter_token, token)
-                    enter_token = None
+        Track that onResume should precede onPause. They should not be
+        multiple (several in a series).
 
-            # Track visits
-            if token.code == 'EP':
-                if token.stage == Event.QUESTION:
-                    self.screen_visit(token)
-                    self.enter_count += 1
+        Buried here is tracking the short break time for individual prompts.
 
-            # Track certain events
-            # Contravene a constraint
-            if token.code == 'CC':
-                if token.stage == Event.QUESTION:
-                    self.screen_cc(token)
-            # Save form count
-            elif token.code == 'SF':
-                self.save_count += 1
-            # Track rS, happens in HQ when related FQ age is moved out of 15-49
-            elif token.code == 'rS':
-                self.relation_self_destruct += 1
+        Args:
+            event (Event): The next event to analyze
+            state (LogParseState): The state of the log-event analysis
+        """
+        # Track onResume -> onPause
+        if event.code == 'oR':
+            if state.last_pause is None and state.last_resume is None:
+                state.last_resume = event
+            elif state.last_pause and state.last_resume is None:
+                self.screen_short_break_time(state.last_pause, event)
+                paused_diff = event - state.last_pause
+                self.update_paused(paused_diff)
+                state.last_resume = event
+                state.last_pause = None
+            elif state.last_resume and state.last_pause is None:
+                msg = '[{}] Still oR, oR ({} and {}) without oP'
+                msg = msg.format(self.folder, state.last_resume, event)
+                logging.warning(msg)
+        elif event.code == 'oP':
+            if state.last_pause is None and state.last_resume is None:
+                msg = '[%s] Before first oR, found oP: %s'
+                logging.warning(msg, self.folder, str(event))
+            elif state.last_resume and state.last_pause is None:
+                resumed_diff = event - state.last_resume
+                self.update_resumed(resumed_diff)
+                state.last_resume = None
+                state.last_pause = event
+                if resumed_diff > self.TWO_HR:
+                    msg = '[{}] Large resumed time (>2hr) between {} and {}'
+                    msg = msg.format(self.folder, state.last_resume, event)
+                    logging.warning(msg)
+            elif state.last_pause and state.last_resume is None:
+                msg = '[{}] oP, oP ({} and {}) without oR'
+                msg = msg.format(self.folder, state.last_pause, event)
+                logging.warning(msg)
 
-            # Track value of each entry
-            self.update_prompt_value(token)
+    def track_question_resumed_time(self, event, state):
+        """Track resumed time for questionnaire prompts.
 
-            # End of loop
-            last_token = token
+        This modifies the state object based on the events that are
+        observed.
 
-    def update_prompt_value(self, token):
-        for entry, prompt in zip(token, token.prompts()):
+        Args:
+            event (Event): The next event to analyze
+            state (LogParseState): The state of the log-event analysis
+        """
+        # Track time in each question
+        if event.code == 'oR' or event.code == 'EP':
+            if event.stage == Event.QUESTION:
+                state.last_enter = event
+        elif event.code == 'oP' or event.code == 'LP':
+            if event.stage == Event.QUESTION:
+                self.screen_time(state.last_enter, event)
+                state.last_enter = None
+
+    def track_countables(self, event):
+        """Track miscellaneous events that are counted.
+
+        Currently we track counts of
+            * Total screen visits
+            * Visits to each prompt
+            * Contravene constraint (CC) for each prompt
+            * Save forms
+            * Relation self-destructs
+
+        Args:
+            event (Event): The next event to analyze
+        """
+        # Track visits
+        if event.code == 'EP':
+            if event.stage == Event.QUESTION:
+                self.screen_visit(event)
+                self.enter_count += 1
+
+        # Contravene a constraint
+        if event.code == 'CC':
+            if event.stage == Event.QUESTION:
+                self.screen_cc(event)
+
+        # Save form count
+        elif event.code == 'SF':
+            self.save_count += 1
+
+        # Track rS, happens in HQ when related FQ age is moved out of 15-49
+        elif event.code == 'rS':
+            self.relation_self_destruct += 1
+
+    def track_prompt_value(self, event):
+        """Track the value of each prompt over the course of the log.
+
+        The value saved at each prompt is tracked in order to count the number
+        of times that value changes. We only track substantive changes, not
+        when the value is first entered.
+
+        Args:
+            event (Event): The next event to analyze
+        """
+        for entry, prompt in zip(event, event.prompts()):
             xpath = entry[2]
             value = entry[3]
             if xpath not in self.prompt_value:
@@ -276,52 +335,128 @@ class Instance:
                 except KeyError:
                     self.prompt_changes[prompt] = 1
 
-    def screen_cc(self, cc_token):
-        for p in cc_token.prompts():
-            self.update_screen_cc(p)
+    def screen_cc(self, cc_event):
+        """Track code CC from given event.
+
+        Args:
+            cc_event (Event): The next event to analyze
+        """
+        for prompt in cc_event.prompts():
+            self.update_screen_cc(prompt)
 
     def update_screen_cc(self, prompt):
-        if prompt in self.prompts:
-            if prompt in self.prompt_cc:
-                self.prompt_cc[prompt] += 1
-            else:
-                self.prompt_cc[prompt] = 1
+        """Update the CC count for the supplied prompt.
 
-    def screen_visit(self, enter_token):
-        for p in enter_token.prompts():
-            self.update_screen_visits(p)
+        Args:
+            prompt (str): The name of the prompt (simplified xpath, ODK name)
+        """
+        if prompt in self.prompt_cc:
+            self.prompt_cc[prompt] += 1
+        else:
+            self.prompt_cc[prompt] = 1
+
+    def screen_visit(self, enter_event):
+        """Track a screen visit for the given event.
+
+        Args:
+            enter_event (Event): The next event to analze
+        """
+        for prompt in enter_event.prompts():
+            self.update_screen_visits(prompt)
 
     def update_screen_visits(self, prompt):
-        if prompt in self.prompts:
-            if prompt in self.prompt_visits:
-                self.prompt_visits[prompt] += 1
-            else:
-                self.prompt_visits[prompt] = 1
+        """Update the screen visit count for the given prompt.
+
+        If the prompt is not in the list of prompts to track, we add the
+        supplied prompt to the "uncaptured prompts" instance variable for
+        reporting later.
+
+        Args:
+            prompt (str): The name of the prompt (simplified xpath, ODK name)
+        """
+        if prompt in self.prompt_visits:
+            self.prompt_visits[prompt] += 1
         else:
+            self.prompt_visits[prompt] = 1
+        if prompt not in self.prompts:
             self.uncaptured_prompts.add(prompt)
 
-    def screen_time(self, enter_token, leave_token):
-        if enter_token and leave_token and leave_token.stage == Event.QUESTION:
-            time_diff = leave_token - enter_token
-            e, l = set(enter_token.prompts()), set(leave_token.prompts())
-            if not e & l:
-                logging.warning('[%s] Unmatched enter/exit tokens: %s, %s', self.folder, str(enter_token), str(leave_token))
-            for p in e & l:
-                self.update_screen_time(p, time_diff)
+    def screen_short_break_time(self, pause, resume):
+        """Track short break time for the given events.
+
+        Args:
+            pause (Event): An onPause event
+            resume (Event): A subsequent onResume event
+        """
+        if pause.stage == Event.QUESTION and resume.stage == Event.QUESTION:
+            time_diff = resume - pause
+            if 0 < time_diff < self.short_break_threshold:
+                pause_prompts = set(pause.prompts())
+                resume_prompts = set(resume.prompts())
+                for prompt in pause_prompts & resume_prompts:
+                    self.update_screen_short_break_time(prompt, time_diff)
+
+    def update_screen_short_break_time(self, prompt, time_diff):
+        """Update the short break time for the given prompt.
+
+        Args:
+            prompt (str): The name of the prompt (simplified xpath, ODK name)
+            time_diff (int): The amount to add to short break time for prompt.
+        """
+        if prompt in self.prompt_short_break:
+            self.prompt_short_break[prompt] += time_diff
+        else:
+            self.prompt_short_break[prompt] = time_diff
+
+    def screen_time(self, enter_event, leave_event):
+        """Track resumed screen time.
+
+        Args:
+            enter_event (Event): An event for entering a prompt (oR, EP)
+            leave_event (Event): An event for leaving a prompt (oP, LP)
+        """
+        if enter_event and leave_event and leave_event.stage == Event.QUESTION:
+            time_diff = leave_event - enter_event
+            enter_prompts = set(enter_event.prompts())
+            leave_prompts = set(leave_event.prompts())
+            if not enter_prompts & leave_prompts:
+                logging.warning('[%s] Unmatched enter/exit event: %s, %s',
+                                self.folder, str(enter_event),
+                                str(leave_event))
+            for prompt in enter_prompts & leave_prompts:
+                self.update_screen_time(prompt, time_diff)
 
     def update_screen_time(self, prompt, time_diff):
-        if prompt in self.prompts:
-            if prompt in self.prompt_resumed:
-                self.prompt_resumed[prompt] += time_diff
-            else:
-                self.prompt_resumed[prompt] = time_diff
+        """Update the resumed screen time for the given prompt.
+
+        Args:
+            prompt (str): The name of the prompt (simplified xpath, ODK name)
+            time_diff (int): The amount to add to resumed time for prompt.
+        """
+        if prompt in self.prompt_resumed:
+            self.prompt_resumed[prompt] += time_diff
+        else:
+            self.prompt_resumed[prompt] = time_diff
 
     def update_resumed(self, resumed_diff):
-        if 0 < resumed_diff:
+        """Update the overall resumed time for the questionnaire.
+
+        Args:
+            resumed_diff (int): The amount to update by
+        """
+        if resumed_diff > 0:
             self.resumed += resumed_diff
 
     def update_paused(self, paused_diff):
-        if 0 < paused_diff:
+        """Update the overall paused time for the questionnaire.
+
+        If the amount is less than the short break threshold it is added to
+        that quantity as well.
+
+        Args:
+            paused_diff (int): The amount to update by
+        """
+        if paused_diff > 0:
             self.paused += paused_diff
         if 0 < paused_diff < self.short_break_threshold:
             self.short_break += paused_diff
@@ -334,3 +469,13 @@ class Instance:
         """Get the string representation of this instance."""
         return repr(self)
 
+
+class LogParseState:  # pylint: disable=too-few-public-methods
+    """A class to track the state during parsing."""
+
+    def __init__(self):
+        """Initialize parsing state."""
+        self.last_resume = None
+        self.last_pause = None
+        self.last_enter = None
+        self.prev_event = None

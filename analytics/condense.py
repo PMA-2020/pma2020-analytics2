@@ -67,7 +67,8 @@ def analytics_header(prompts, tags):
             f'{prompt}_CC',
             f'{prompt}_time',
             f'{prompt}_visits',
-            f'{prompt}_delta'
+            f'{prompt}_delta',
+            f'{prompt}_sb'
         ]
         header.extend(chunk)
     return header
@@ -116,7 +117,7 @@ def analytics_instance_row(instance, prompts, tags):
         except KeyError:
             chunk.append(None)
         try:
-            timing = int(instance.prompt_data[prompt]/1000)
+            timing = int(instance.prompt_resumed[prompt]/1000)
             chunk.append(timing)
         except KeyError:
             chunk.append(None)
@@ -128,6 +129,11 @@ def analytics_instance_row(instance, prompts, tags):
         try:
             delta = instance.prompt_changes[prompt]
             chunk.append(delta)
+        except KeyError:
+            chunk.append(None)
+        try:
+            short_break = int(instance.prompt_short_break[prompt]/1000)
+            chunk.append(short_break)
         except KeyError:
             chunk.append(None)
         row.extend(chunk)
