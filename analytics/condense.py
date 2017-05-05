@@ -9,6 +9,7 @@ import time
 
 from analytics.formdata import lookup
 from analytics.exception import CondenseException
+from analytics.exception import LookupException
 from analytics.instance import Instance
 
 
@@ -270,17 +271,17 @@ def condense_cli_args():
     named = parser.add_argument_group('named arguments')
 
     storage_help = ('A directory with a subdirectory called "ODK Briefcase '
-                    'Storage"')
+                    'Storage".')
     named.add_argument('--storage_directory', help=storage_help, required=True)
 
     form_help = ('The form id of the files to condense. Must be known to the '
-                 'system or supplied')
+                 'system or supplied.')
     named.add_argument('--form_id', help=form_help, required=True)
 
-    dir_help = 'A directory to store output and export information'
+    dir_help = 'A directory to store output and export information.'
     named.add_argument('--export_directory', help=dir_help, required=True)
 
-    out_help = 'The file to write. Should have ".csv" extension'
+    out_help = 'The file to write. Should have ".csv" extension.'
     named.add_argument('--export_filename', help=out_help, required=True)
 
     overwrite_help = ('Set this flag to overwrite output CSV file, otherwise '
@@ -303,6 +304,11 @@ def condense_cli_args():
                    '"TAGN"]} at a minimum')
     parser.add_argument('--lookup', help=lookup_help)
 
+    storage_literal_help = ('Include to interpret --storage_directory as the '
+                            'folder containing all instances.')
+    parser.add_argument('-s', '--storage_literal', help=storage_literal_help,
+                        action='store_true')
+
     args = parser.parse_args()
     return args
 
@@ -311,12 +317,14 @@ def condense_cli():
     """Run the CLI for condense, the main entry point for PMA analytics."""
     args = condense_cli_args()
     setup_logging(args.log_level, args.export_directory, args.log_file)
+    instances_dir = args.storage_directory
     try:
         form_obj = lookup.lookup(args.form_id, src=args.lookup)
         form_title = form_obj['form_title']
-        instances_dir = os.path.join(args.storage_directory,
-                                     'ODK Briefcase Storage', 'forms',
-                                     form_title, 'instances')
+        if not args.storage_directory:
+            instances_dir = os.path.join(args.storage_directory,
+                                         'ODK Briefcase Storage', 'forms',
+                                         form_title, 'instances')
         csv_output = os.path.join(args.export_directory, args.export_filename)
 
         logging.info('Create logging record for form_id "%s"', args.form_id)
@@ -336,8 +344,10 @@ def condense_cli():
         logging.info(msg)
         print(msg)
     except FileNotFoundError:
-        print(f'No such storage directory: {args.storage_directory}')
-    except KeyError as e:
+        msg = (f'Unable to find ODK instances directory: "{instances_dir}". '
+               f'Check --storage_directory and --storage_literal arguments.')
+        print(msg)
+    except LookupException as e:
         print(e)
     except CondenseException as e:
         print(e)
