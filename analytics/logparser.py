@@ -90,9 +90,12 @@ class Logparser:
         valid = False
         if not row:
             if ind is not None and folder is not None:
-                logging.warning('[%s] Empty line: %d', folder, ind+1)
+                logging.warning('[%s] Empty line: %d', folder, ind + 1)
         elif row[0].startswith('#') and ind == 0:
             pass
+        elif len(row) != 4:
+            logging.warning('[%s] Line with incorrect length: %d', folder, ind
+                            + 1)
         else:
             timestamp_pattern = re.compile(r'\d{13}')
             timestamp = timestamp_pattern.match(row[0]) is not None
@@ -102,9 +105,7 @@ class Logparser:
 
             xpath = row[2] != ''
 
-            correct_length = len(row) == 4
-
-            if all((timestamp, event, xpath, correct_length)):
+            if all((timestamp, event, xpath)):
                 valid = True
             elif ind is not None and folder is not None:
                 logging.warning('[%s] Incorrectly formatted line: %d', folder,
