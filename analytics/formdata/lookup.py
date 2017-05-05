@@ -4,6 +4,8 @@ import json
 import logging
 import os.path
 
+from analytics.exception import LookupException
+
 
 def lookup(form_id, src=None):
     """Return the analytics object for this form_id.
@@ -18,11 +20,15 @@ def lookup(form_id, src=None):
         The first matching analytics form id
 
     Throws:
-        KeyError: If form_id not found among source or supplied files.
+        LookupException: If form_id not found among source or supplied files.
     """
     to_return = None
     if src:
-        to_return = obj_by_id(src, form_id)
+        try:
+            to_return = obj_by_id(src, form_id)
+        except FileNotFoundError:
+            msg = f'Analytics lookup source not found: "{src}"'
+            raise LookupException(msg)
     else:
         search = os.path.join(os.path.split(__file__)[0], '*.json')
         for path in glob.glob(search):
@@ -34,7 +40,7 @@ def lookup(form_id, src=None):
     else:
         msg = (f'Unable to find form information for {form_id}. Verify '
                f'supplied form id and lookup data.')
-        raise KeyError(msg)
+        raise LookupException(msg)
 
 
 def obj_by_id(path, form_id):
