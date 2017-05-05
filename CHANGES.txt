@@ -1,3 +1,7 @@
+v0.3.2, 5 May 2017
+ * Modify CLI to allow explicit instances dir
+ * Better error handling
+
 v0.3.1, 2 May 2017
  * ETR5: HQ/FQ/SQ v11
 
