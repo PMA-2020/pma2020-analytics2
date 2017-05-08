@@ -321,7 +321,7 @@ def condense_cli():
     try:
         form_obj = lookup.lookup(args.form_id, src=args.lookup)
         form_title = form_obj['form_title']
-        if not args.storage_directory:
+        if not args.storage_literal:
             instances_dir = os.path.join(args.storage_directory,
                                          'ODK Briefcase Storage', 'forms',
                                          form_title, 'instances')
