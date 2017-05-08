@@ -66,6 +66,7 @@ class Instance:  # pylint: disable=too-many-instance-attributes
         Some instance variables are initialized in other methods.
 
         Args:
+            name (str): The path to the folder containing all instance info
             prompts (seq of str): Prompt names to analyze from log.txt
             tags (seq of str): XML tag names to extract from submission.xml
         """

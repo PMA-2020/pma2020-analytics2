@@ -86,6 +86,8 @@ class Event:  # pylint: disable=too-many-instance-attributes
         if self.increasing and this_time < self.last_time():
             self.increasing = False
 
+        self.rows.append(row)
+
     def copy(self):
         """Make a copy of this event."""
         rows = []
