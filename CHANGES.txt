@@ -1,3 +1,7 @@
+v0.3.3, 8 May 2017
+ * Fix bug in CLI for explicit instances dir
+ * Fix bug to track all rows of an event
+
 v0.3.2, 5 May 2017
  * Modify CLI to allow explicit instances dir
  * Better error handling
