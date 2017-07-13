@@ -1,3 +1,6 @@
+v0.3.7, 13 July 2017
+ * GHR5 v12 HQ/FQ
+
 v0.3.6, 12 June 2017
  * NER4 v8 HQ/FQ/SQ
 
