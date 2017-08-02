@@ -1,3 +1,6 @@
+v0.3.8, 02 August 2017
+ * RJR3 v6 HQ/FQ/SQ
+
 v0.3.7, 13 July 2017
  * GHR5 v12 HQ/FQ
 
