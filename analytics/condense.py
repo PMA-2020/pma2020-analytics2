@@ -93,9 +93,9 @@ def analytics_instance_row(instance, prompts, tags):
         int(instance.xml_size / 1000),
         int(instance.txt_size / 1000),
         int(instance.jpg_size / 1000),
-        int(instance.resumed / 1000),
-        int(instance.paused / 1000),
-        int(instance.short_break / 1000),
+        instance.resumed,
+        instance.paused,
+        instance.short_break,
         instance.save_count,
         instance.enter_count,
         instance.relation_self_destruct
@@ -118,7 +118,7 @@ def analytics_instance_row(instance, prompts, tags):
         except KeyError:
             chunk.append(None)
         try:
-            timing = int(instance.prompt_resumed[prompt]/1000)
+            timing = instance.prompt_resumed[prompt]
             chunk.append(timing)
         except KeyError:
             chunk.append(None)
@@ -133,7 +133,7 @@ def analytics_instance_row(instance, prompts, tags):
         except KeyError:
             chunk.append(None)
         try:
-            short_break = int(instance.prompt_short_break[prompt]/1000)
+            short_break = instance.prompt_short_break[prompt]
             chunk.append(short_break)
         except KeyError:
             chunk.append(None)
