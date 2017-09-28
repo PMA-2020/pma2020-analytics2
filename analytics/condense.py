@@ -65,11 +65,11 @@ def analytics_header(prompts, tags):
     # Get all dynamic prompts
     for prompt in prompts:
         chunk = [
-            f'{prompt}_CC',
-            f'{prompt}_time',
-            f'{prompt}_visits',
-            f'{prompt}_delta',
-            f'{prompt}_sb'
+            f'{prompt}_c',
+            f'{prompt}_t',
+            f'{prompt}_v',
+            f'{prompt}_d',
+            f'{prompt}_b'
         ]
         header.extend(chunk)
     return header
@@ -100,43 +100,25 @@ def analytics_instance_row(instance, prompts, tags):
         instance.enter_count,
         instance.relation_self_destruct
     ]
-    # Get all dynamic tags
+    # Get all dynamic tags, use None if not found
     tag_chunk = []
     for tag in tags:
-        try:
-            found_tag = instance.tag_data[tag]
-            tag_chunk.append(found_tag)
-        except KeyError:
-            tag_chunk.append(None)
+        found_tag = instance.tag_data.get(tag)
+        tag_chunk.append(found_tag)
     row.extend(tag_chunk)
-    # Get all dynamic prompts
+    # Get all dynamic prompts, use None if not found
     for prompt in prompts:
         chunk = []
-        try:
-            this_cc = instance.prompt_cc[prompt]
-            chunk.append(this_cc)
-        except KeyError:
-            chunk.append(None)
-        try:
-            timing = instance.prompt_resumed[prompt]
-            chunk.append(timing)
-        except KeyError:
-            chunk.append(None)
-        try:
-            visits = instance.prompt_visits[prompt]
-            chunk.append(visits)
-        except KeyError:
-            chunk.append(None)
-        try:
-            delta = instance.prompt_changes[prompt]
-            chunk.append(delta)
-        except KeyError:
-            chunk.append(None)
-        try:
-            short_break = instance.prompt_short_break[prompt]
-            chunk.append(short_break)
-        except KeyError:
-            chunk.append(None)
+        this_cc = instance.prompt_cc.get(prompt)
+        chunk.append(this_cc)
+        timing = instance.prompt_resumed.get(prompt)
+        chunk.append(timing)
+        visits = instance.prompt_visits.get(prompt)
+        chunk.append(visits)
+        delta = instance.prompt_changes.get(prompt)
+        chunk.append(delta)
+        short_break = instance.prompt_short_break.get(prompt)
+        chunk.append(short_break)
         row.extend(chunk)
     return row
 
