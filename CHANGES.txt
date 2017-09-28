@@ -1,3 +1,10 @@
+v0.4.0, 28 September 2017
+ * CDR6 HQ/FQ/SQ v6
+ * CIR1 HQ/FQ/SQ v9
+ * GHR6 HQ/FQ v11 SQ v9
+ * Shorten suffix of prompt values to one letter (see README)
+ * Times in milliseconds. No data loss.
+
 v0.3.8, 02 August 2017
  * RJR3 v6 HQ/FQ/SQ
 

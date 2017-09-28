@@ -7,6 +7,22 @@ tool.
 
 *Note: the repository name and the package name are different!*
 
+Some of the data that is extracted:
+* Specific XML tags from the submitted instance
+* Total active screen time during the whole survey
+* Short break time during the whole survey
+* File sizes of photos, submission, and log
+* Total swiping events
+
+Also, five data points for each known prompt in the log are recorded. Each column name suffix and description is below.
+- `_c` for the number of times a constraint/required was invoked on the prompt.
+- `_t` for the active screen time spent on the prompt.
+- `_v` for the total number of visits to the prompt.
+- `_d` for the total number of times the answer changed on the prompt.
+- `-b` for short break time associated with the prompt.
+
+*All times are in millseconds.*
+
 ## Pre-requisites
 
 PMA Analytics makes use of Python 3.6. Install [Python 3.6][1].
