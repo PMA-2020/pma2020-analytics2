@@ -1,3 +1,8 @@
+v0.4.1, 28 November 2017
+ * BFR5 HQ/FQ/SQ v13
+ * KER6 HQ/FQ/SQ v7
+ * NGR5 Oyo state HQ/FQ/SQ v10
+
 v0.4.0, 28 September 2017
  * CDR6 HQ/FQ/SQ v6
  * CIR1 HQ/FQ/SQ v9

@@ -3,4 +3,4 @@
 The main entry point is as a command-line tool with the analytics.condense
 module.
 """
-__version__ = '0.4.0'
+__version__ = '0.4.1'
