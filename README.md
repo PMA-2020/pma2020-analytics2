@@ -19,7 +19,7 @@ Also, five data points for each known prompt in the log are recorded. Each colum
 - `_t` for the active screen time spent on the prompt.
 - `_v` for the total number of visits to the prompt.
 - `_d` for the total number of times the answer changed on the prompt.
-- `-b` for short break time associated with the prompt.
+- `_b` for short break time associated with the prompt.
 
 *All times are in millseconds.*
 
