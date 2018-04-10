@@ -1,3 +1,7 @@
+v0.4.3, 10 April 2018
+ * NGR5 HQ/FQ v36
+ * NGR5 SQ v28
+
 v0.4.2, 6 March 2018
  * FQ-wge-ug-v19
  * HQ-wge-ug-v19
