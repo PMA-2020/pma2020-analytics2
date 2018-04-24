@@ -1,3 +1,6 @@
+v0.4.4, 24 April 2018
+ * UGR6 HQ/FQ v11, SQ v8
+
 v0.4.3, 10 April 2018
  * NGR5 HQ/FQ v36
  * NGR5 SQ v28
