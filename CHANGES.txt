@@ -1,3 +1,6 @@
+v0.4.5, 29 June 2018
+ * UGR1 Follw up survey HQ/FQ v40
+
 v0.4.4, 24 April 2018
  * UGR6 HQ/FQ v11, SQ v8
 
